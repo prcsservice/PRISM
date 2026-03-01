@@ -2,6 +2,7 @@
 
 import { useTeacherData } from "@/hooks/useTeacherData";
 import BarChart from "@/components/dashboard/BarChart";
+import ExportButton from "@/components/dashboard/ExportButton";
 import { Users, AlertTriangle, TrendingUp } from "lucide-react";
 import MetricCard from "@/components/dashboard/MetricCard";
 
@@ -43,15 +44,27 @@ export default function TeacherAnalyticsPage() {
         { name: "Critical", value: riskLevels.critical },
     ];
 
-    // Dummy monthly trend data referencing the PRD analytics concept
-    const monthlyTrendData = [
-        { month: "Jan", avgRiskScore: 32, newAlerts: 12 },
-        { month: "Feb", avgRiskScore: 45, newAlerts: 24 },
-        { month: "Mar", avgRiskScore: 50, newAlerts: 31 },
-        { month: "Apr", avgRiskScore: 42, newAlerts: 18 },
-        { month: "May", avgRiskScore: 68, newAlerts: 45 }, // Finals prep peak
-        { month: "Jun", avgRiskScore: 20, newAlerts: 4 },
-    ];
+    // Build risk score distribution per student
+    const riskScoreData = students
+        .filter(s => s.metrics)
+        .map(s => ({
+            name: s.name?.split(" ")[0] ?? "Student",
+            score: Math.round((s.metrics?.riskScore ?? 0) * 100),
+        }))
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 10);
+
+    // CSV export data
+    const exportData = students.map(s => ({
+        Name: s.name,
+        "Roll Number": s.rollNo,
+        Department: s.department,
+        Section: s.section,
+        Year: s.year,
+        "Risk Level": s.metrics?.riskLevel ?? "N/A",
+        "Stress Level": s.metrics?.currentStressLevel ? Math.round(s.metrics.currentStressLevel * 100) + "%" : "N/A",
+        "Risk Score": s.metrics?.riskScore ? Math.round(s.metrics.riskScore * 100) + "%" : "N/A",
+    }));
 
     return (
         <div className="flex flex-col gap-8 pb-10">
@@ -61,9 +74,9 @@ export default function TeacherAnalyticsPage() {
                     <p className="text-text-secondary">Aggregate insights and risk distribution for {profile?.department || "your department"}.</p>
                 </div>
 
-                <button className="px-5 py-2.5 bg-white text-black text-sm font-semibold rounded hover:bg-gray-100 transition-colors hidden sm:block">
-                    Export Report (.CSV)
-                </button>
+                <div className="hidden sm:block">
+                    <ExportButton data={exportData} filename="prism_analytics" label="Export Report (.CSV)" />
+                </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -106,16 +119,20 @@ export default function TeacherAnalyticsPage() {
                 </div>
 
                 <div className="bg-bg-secondary border border-border-primary rounded-xl flex flex-col p-6 h-96">
-                    <h3 className="font-semibold text-text-primary mb-6">Monthly Risk Trend</h3>
+                    <h3 className="font-semibold text-text-primary mb-6">Top Risk Scores by Student</h3>
                     <div className="flex-1 min-h-0 w-full relative">
-                        <BarChart
-                            data={monthlyTrendData}
-                            xKey="month"
-                            yKey="avgRiskScore"
-                            color="#3B82F6" // Blue for trend
-                            highlightThreshold={60} // Highlight May peak returning red
-                            height={280}
-                        />
+                        {riskScoreData.length > 0 ? (
+                            <BarChart
+                                data={riskScoreData}
+                                xKey="name"
+                                yKey="score"
+                                color="#3B82F6"
+                                highlightThreshold={60}
+                                height={280}
+                            />
+                        ) : (
+                            <div className="h-full flex items-center justify-center text-text-muted text-sm">No scored students available.</div>
+                        )}
                     </div>
                 </div>
             </div>

@@ -28,8 +28,8 @@ export default function TeacherDashboard() {
     const criticalStudents = students.filter(s => s.metrics?.riskLevel === "High").length;
     const activeAlerts = alerts.filter(a => !a.resolved).length;
 
-    // Example dummy trends
-    const stressTrend = -5; // Went down 5% (Good)
+    // Example computed trends (0 = no historical comparison available yet)
+    const stressTrend = 0;
 
     // Students at risk table configuration
     const atRiskStudents = students
@@ -78,31 +78,31 @@ export default function TeacherDashboard() {
                 <MetricCard
                     title="Monitored Students"
                     value={totalStudents}
-                    trend={2}
-                    trendLabel="vs last month"
+                    trend={0}
+                    trendLabel="current semester"
                     icon={<Users size={20} />}
                 />
                 <MetricCard
                     title="Active Alerts"
                     value={activeAlerts}
-                    trend={10}
-                    trendLabel="vs yesterday"
+                    trend={0}
+                    trendLabel="unresolved"
                     icon={<AlertTriangle size={20} className="text-orange-500" />}
                     invertColors
                 />
                 <MetricCard
                     title="Critical Risk Students"
                     value={criticalStudents}
-                    trend={-1}
-                    trendLabel="Resolved this week"
+                    trend={0}
+                    trendLabel="currently at risk"
                     icon={<Activity size={20} className="text-red-500" />}
                     invertColors
                 />
                 <MetricCard
                     title="Avg Dept Stress"
-                    value="64/100"
+                    value={totalStudents > 0 ? `${Math.round(students.reduce((sum, s) => sum + ((s.metrics?.currentStressLevel ?? 0.4) * 100), 0) / totalStudents)}/100` : "—"}
                     trend={stressTrend}
-                    trendLabel="vs last week"
+                    trendLabel={stressTrend === 0 ? "no previous data" : "vs last week"}
                     icon={<TrendingUp size={20} />}
                     invertColors
                 />

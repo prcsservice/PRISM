@@ -1,19 +1,139 @@
-import * as functions from "firebase-functions";
+import { onDocumentCreated, onDocumentWritten } from "firebase-functions/v2/firestore";
+import { onSchedule } from "firebase-functions/v2/scheduler";
+import { logger } from "firebase-functions";
 import * as admin from "firebase-admin";
-import { normalizeAll, computeScores } from "./normalization";
+import { normalizeAll, computeScores, RiskLevel } from "./normalization";
 import { checkAndCreateAlert } from "./alerts";
+import { callGeminiPrediction } from "./gemini";
 
 admin.initializeApp();
+
+// ===== Data Deletion Functions =====
+
+/**
+ * Scheduled function: Runs daily at 2 AM UTC.
+ * Finds users who requested deletion and wipes all their data.
+ */
+export const processDataDeletion = onSchedule("every day 02:00", async () => {
+    const db = admin.firestore();
+
+    const usersSnap = await db.collection("users")
+        .where("deletionRequested", "==", true)
+        .get();
+
+    if (usersSnap.empty) {
+        logger.info("No pending deletion requests.");
+        return;
+    }
+
+    for (const userDoc of usersSnap.docs) {
+        const uid = userDoc.id;
+        logger.info(`Processing data deletion for user ${uid}`);
+
+        try {
+            await deleteStudentData(db, uid);
+
+            // Delete user doc last
+            await db.doc(`users/${uid}`).delete();
+
+            logger.info(`Successfully deleted all data for user ${uid}`);
+        } catch (error) {
+            logger.error(`Error deleting data for user ${uid}:`, error);
+        }
+    }
+});
+
+/**
+ * Real-time trigger: When a user sets deletionRequested = true,
+ * immediately process the deletion.
+ */
+export const onUserDeletionRequested = onDocumentWritten(
+    "users/{userId}",
+    async (event) => {
+        const before = event.data?.before?.data();
+        const after = event.data?.after?.data();
+
+        // Only trigger when deletionRequested changes from false/undefined to true
+        if (before?.deletionRequested || !after?.deletionRequested) return;
+
+        const uid = event.params.userId;
+        const db = admin.firestore();
+
+        logger.info(`Immediate deletion triggered for user ${uid}`);
+
+        try {
+            await deleteStudentData(db, uid);
+            await db.doc(`users/${uid}`).delete();
+            logger.info(`Successfully deleted all data for user ${uid}`);
+        } catch (error) {
+            logger.error(`Error in immediate deletion for ${uid}:`, error);
+        }
+    }
+);
+
+/**
+ * Helper: Deletes all student subcollections and related alerts/interventions.
+ */
+async function deleteStudentData(db: admin.firestore.Firestore, uid: string) {
+    // Delete subcollections: dailyLogs, predictions
+    const subcollections = ["dailyLogs", "predictions"];
+    for (const sub of subcollections) {
+        const snap = await db.collection(`students/${uid}/${sub}`).get();
+        const batch = db.batch();
+        snap.docs.forEach(doc => batch.delete(doc.ref));
+        if (!snap.empty) await batch.commit();
+    }
+
+    // Delete single docs: profile/main, academic/data, metrics/current
+    const singleDocs = [
+        `students/${uid}/profile/main`,
+        `students/${uid}/academic/data`,
+        `students/${uid}/metrics/current`,
+    ];
+    for (const path of singleDocs) {
+        const ref = db.doc(path);
+        const snap = await ref.get();
+        if (snap.exists) await ref.delete();
+    }
+
+    // Delete the student root doc
+    const studentRef = db.doc(`students/${uid}`);
+    const studentSnap = await studentRef.get();
+    if (studentSnap.exists) await studentRef.delete();
+
+    // Delete associated alerts
+    const alertsSnap = await db.collection("alerts")
+        .where("studentId", "==", uid)
+        .get();
+    if (!alertsSnap.empty) {
+        const batch = db.batch();
+        alertsSnap.docs.forEach(doc => batch.delete(doc.ref));
+        await batch.commit();
+    }
+
+    // Delete associated interventions
+    const interventionsSnap = await db.collection("interventions")
+        .where("studentId", "==", uid)
+        .get();
+    if (!interventionsSnap.empty) {
+        const batch = db.batch();
+        interventionsSnap.docs.forEach(doc => batch.delete(doc.ref));
+        await batch.commit();
+    }
+}
 
 /**
  * Trigger: When a new daily log is created for a student.
  * Flow: Fetch data -> Normalize -> Score -> Generate text -> Store prediction -> Update metrics -> Check alerts
  */
-export const onDailyLogCreated = functions.firestore
-    .document("students/{studentId}/dailyLogs/{logId}")
-    .onCreate(async (snap: FirebaseFirestore.DocumentSnapshot, context: functions.EventContext) => {
-        const { studentId } = context.params;
-        const logData = snap.data()!;
+export const onDailyLogCreated = onDocumentCreated(
+    "students/{studentId}/dailyLogs/{logId}",
+    async (event) => {
+        const snap = event.data;
+        if (!snap) return;
+
+        const studentId = event.params.studentId;
+        const logData = snap.data();
         const db = admin.firestore();
 
         try {
@@ -41,33 +161,74 @@ export const onDailyLogCreated = functions.firestore
                 facultyFeedbackScore: academic.facultyFeedbackScore ?? 3,
             });
 
-            // 4. Compute scores deterministically
-            const scores = computeScores(features);
+            // 4. Try Gemini AI first, fallback to deterministic scoring
+            const rawInput = {
+                sleepHours: logData.sleepHours,
+                screenTimeHours: logData.screenTimeHours,
+                mood: logData.mood,
+                studyHours: logData.studyHours,
+                socialInteraction: logData.socialInteraction,
+                ciaAverage,
+                attendancePercentage: academic.attendancePercentage ?? 75,
+                facultyFeedbackScore: academic.facultyFeedbackScore ?? 3,
+            };
 
-            // 5. Generate suggestions based on features
-            const suggestions = generateSuggestions(features, scores);
-            const explanation = generateExplanation(features, scores);
+            const geminiResult = await callGeminiPrediction(features, rawInput);
 
-            // 6. Fetch 7-day averages for metrics
+            let stressLevel: number;
+            let failureProbability: number;
+            let attendanceDecline: number;
+            let riskScore: number;
+            let riskLevel: RiskLevel;
+            let suggestions: string[];
+            let explanation: string;
+            let modelUsed: "gemini" | "fallback";
+
+            if (geminiResult) {
+                // Use Gemini result
+                stressLevel = geminiResult.stressLevel;
+                failureProbability = geminiResult.failureProbability;
+                attendanceDecline = geminiResult.attendanceDecline;
+                riskScore = stressLevel * 0.4 + failureProbability * 0.4 + attendanceDecline * 0.2;
+                riskLevel = geminiResult.riskLevel;
+                suggestions = geminiResult.suggestions;
+                explanation = geminiResult.explainability;
+                modelUsed = "gemini";
+                logger.info(`Gemini prediction used for student ${studentId}`);
+            } else {
+                // Fallback to deterministic model
+                const scores = computeScores(features);
+                stressLevel = scores.stressLevel;
+                failureProbability = scores.failureProbability;
+                attendanceDecline = scores.attendanceDecline;
+                riskScore = scores.riskScore;
+                riskLevel = scores.riskLevel;
+                suggestions = generateSuggestions(features, scores);
+                explanation = generateExplanation(features, scores);
+                modelUsed = "fallback";
+                logger.info(`Fallback model used for student ${studentId}`);
+            }
+
+            // 5. Fetch 7-day averages for metrics
             const logsSnap = await db.collection(`students/${studentId}/dailyLogs`)
                 .orderBy("timestamp", "desc")
                 .limit(7)
                 .get();
 
-            const recentLogs = logsSnap.docs.map((d: FirebaseFirestore.QueryDocumentSnapshot) => d.data());
-            const avgSleep7d = avg(recentLogs.map((l: FirebaseFirestore.DocumentData) => l.sleepHours ?? 7));
-            const avgScreenTime7d = avg(recentLogs.map((l: FirebaseFirestore.DocumentData) => l.screenTimeHours ?? 3));
-            const avgMood7d = avg(recentLogs.map((l: FirebaseFirestore.DocumentData) => l.mood ?? 3));
+            const recentLogs = logsSnap.docs.map((d: any) => d.data());
+            const avgSleep7d = avg(recentLogs.map((l: any) => l.sleepHours ?? 7));
+            const avgScreenTime7d = avg(recentLogs.map((l: any) => l.screenTimeHours ?? 3));
+            const avgMood7d = avg(recentLogs.map((l: any) => l.mood ?? 3));
 
-            // 7. Store prediction
+            // 6. Store prediction
             await db.collection(`students/${studentId}/predictions`).add({
                 timestamp: admin.firestore.FieldValue.serverTimestamp(),
-                riskScore: scores.riskScore,
-                riskLevel: scores.riskLevel,
+                riskScore,
+                riskLevel,
                 predictionData: {
-                    stressLevel: scores.stressLevel,
-                    failureProbability: scores.failureProbability,
-                    attendanceDecline: scores.attendanceDecline,
+                    stressLevel,
+                    failureProbability,
+                    attendanceDecline,
                 },
                 metrics: {
                     avgSleep7d,
@@ -77,44 +238,47 @@ export const onDailyLogCreated = functions.firestore
                 },
                 explanation,
                 suggestions,
+                modelUsed,
             });
 
-            // 8. Update student metrics
+            // 7. Update student metrics
             await db.doc(`students/${studentId}/metrics/current`).set({
-                currentStressLevel: scores.stressLevel,
-                riskScore: scores.riskScore,
-                riskLevel: scores.riskLevel,
+                currentStressLevel: stressLevel,
+                riskScore,
+                riskLevel,
                 lastCalculated: admin.firestore.FieldValue.serverTimestamp(),
             }, { merge: true });
 
-            // 9. Check and create alert if needed
+            // 8. Check and create alert if needed
             const profileSnap = await db.doc(`students/${studentId}/profile/main`).get();
             const studentName = profileSnap.exists ? profileSnap.data()!.name : "Unknown Student";
 
             await checkAndCreateAlert({
                 studentId,
                 studentName,
-                riskScore: scores.riskScore,
-                riskLevel: scores.riskLevel,
-                stressLevel: scores.stressLevel,
-                failureProbability: scores.failureProbability,
+                riskScore,
+                riskLevel,
+                stressLevel,
+                failureProbability,
             });
 
-            functions.logger.info(`Prediction completed for student ${studentId}`, { riskLevel: scores.riskLevel });
+            logger.info(`Prediction completed for student ${studentId}`, { riskLevel, modelUsed });
         } catch (error) {
-            functions.logger.error(`Error processing daily log for ${studentId}:`, error);
+            logger.error(`Error processing daily log for ${studentId}:`, error);
         }
-    });
+    }
+);
 
 /**
  * Trigger: When academic data is updated by a teacher.
  * Re-runs prediction using latest daily log + new academic data.
  */
-export const onAcademicDataUpdated = functions.firestore
-    .document("students/{studentId}/academic/data")
-    .onWrite(async (change: functions.Change<FirebaseFirestore.DocumentSnapshot>, context: functions.EventContext) => {
-        const { studentId } = context.params;
+export const onAcademicDataUpdated = onDocumentWritten(
+    "students/{studentId}/academic/data",
+    async (event) => {
+        const studentId = event.params.studentId;
         const db = admin.firestore();
+        const afterData = event.data?.after?.data();
 
         try {
             // Get latest daily log
@@ -124,12 +288,12 @@ export const onAcademicDataUpdated = functions.firestore
                 .get();
 
             if (logsSnap.empty) {
-                functions.logger.info(`No daily logs for student ${studentId}, skipping re-prediction.`);
+                logger.info(`No daily logs for student ${studentId}, skipping re-prediction.`);
                 return;
             }
 
             const latestLog = logsSnap.docs[0].data();
-            const academic = change.after.exists ? change.after.data()! : {
+            const academic = afterData ?? {
                 ciaMarks: [50],
                 attendancePercentage: 75,
                 facultyFeedbackScore: 3,
@@ -149,21 +313,48 @@ export const onAcademicDataUpdated = functions.firestore
                 facultyFeedbackScore: academic.facultyFeedbackScore ?? 3,
             });
 
-            const scores = computeScores(features);
+            // Try Gemini, then fallback
+            const rawInput = {
+                sleepHours: latestLog.sleepHours,
+                screenTimeHours: latestLog.screenTimeHours,
+                mood: latestLog.mood,
+                studyHours: latestLog.studyHours,
+                socialInteraction: latestLog.socialInteraction,
+                ciaAverage,
+                attendancePercentage: academic.attendancePercentage ?? 75,
+                facultyFeedbackScore: academic.facultyFeedbackScore ?? 3,
+            };
+
+            const geminiResult = await callGeminiPrediction(features, rawInput);
+            let riskScore: number;
+            let riskLevel: RiskLevel;
+            let stressLevel: number;
+
+            if (geminiResult) {
+                stressLevel = geminiResult.stressLevel;
+                riskLevel = geminiResult.riskLevel;
+                riskScore = geminiResult.stressLevel * 0.4 + geminiResult.failureProbability * 0.4 + geminiResult.attendanceDecline * 0.2;
+            } else {
+                const scores = computeScores(features);
+                stressLevel = scores.stressLevel;
+                riskLevel = scores.riskLevel;
+                riskScore = scores.riskScore;
+            }
 
             // Update metrics
             await db.doc(`students/${studentId}/metrics/current`).set({
-                currentStressLevel: scores.stressLevel,
-                riskScore: scores.riskScore,
-                riskLevel: scores.riskLevel,
+                currentStressLevel: stressLevel,
+                riskScore,
+                riskLevel,
                 lastCalculated: admin.firestore.FieldValue.serverTimestamp(),
             }, { merge: true });
 
-            functions.logger.info(`Re-scored student ${studentId} after academic update`, { riskLevel: scores.riskLevel });
+            logger.info(`Re-scored student ${studentId} after academic update`, { riskLevel });
         } catch (error) {
-            functions.logger.error(`Error re-scoring student ${studentId}:`, error);
+            logger.error(`Error re-scoring student ${studentId}:`, error);
         }
-    });
+    }
+);
 
 // === Helper Functions ===
 

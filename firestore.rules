@@ -16,89 +16,104 @@ service cloud.firestore {
       return isAuth() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == role;
     }
 
+    function isTeacher() {
+      return hasRole("teacher");
+    }
+
+    function isStudent() {
+      return hasRole("student");
+    }
+
     // === Users Collection ===
     match /users/{userId} {
-      // Users can read their own data
       allow read: if isOwner(userId);
-      // Users can create their own doc on first sign-in
       allow create: if isOwner(userId);
-      // Users can update their own doc (e.g., onboardingCompleted)
-      allow update: if isOwner(userId);
+      // Users can update their own doc (onboarding, deletion request, etc.)
+      allow update: if isOwner(userId)
+        && (!request.resource.data.diff(resource.data).affectedKeys()
+            .hasAny(['role', 'createdAt'])); // Cannot change role or creation date
     }
 
     // === Students Collection ===
     match /students/{studentId} {
-      // Allow read for the student themselves
       allow read: if isOwner(studentId);
 
       // Student Profile
       match /profile/main {
-        allow read: if isOwner(studentId) || hasRole("teacher");
-        allow create, update: if isOwner(studentId);
+        allow read: if isOwner(studentId) || isTeacher();
+        allow create: if isOwner(studentId) && isStudent();
+        allow update: if isOwner(studentId) && isStudent();
       }
 
       // Academic Data (teacher-writable, student-readable)
       match /academic/data {
-        allow read: if isOwner(studentId) || hasRole("teacher");
-        allow write: if hasRole("teacher");
+        allow read: if isOwner(studentId) || isTeacher();
+        allow write: if isTeacher();
       }
 
       // Daily Logs (student-writable, read by owner + teacher)
       match /dailyLogs/{logId} {
-        allow read: if isOwner(studentId) || hasRole("teacher");
-        allow create: if isOwner(studentId)
+        allow read: if isOwner(studentId) || isTeacher();
+        allow create: if isOwner(studentId) && isStudent()
           && request.resource.data.date is string
           && request.resource.data.sleepHours is number
-          && request.resource.data.mood is number;
-        // Students cannot update or delete logs
+          && request.resource.data.sleepHours >= 0
+          && request.resource.data.sleepHours <= 24
+          && request.resource.data.mood is number
+          && request.resource.data.mood >= 1
+          && request.resource.data.mood <= 5
+          && request.resource.data.screenTimeHours is number
+          && request.resource.data.screenTimeHours >= 0
+          && request.resource.data.studyHours is number
+          && request.resource.data.studyHours >= 0;
+        // Students cannot update or delete logs (immutable)
         allow update, delete: if false;
       }
 
-      // Predictions (read-only for students and teachers)
+      // Predictions (read-only — only Cloud Functions write)
       match /predictions/{predId} {
-        allow read: if isOwner(studentId) || hasRole("teacher");
-        // Only Cloud Functions can write predictions
+        allow read: if isOwner(studentId) || isTeacher();
         allow write: if false;
       }
 
-      // Metrics (read-only for students and teachers)
+      // Metrics (read-only — only Cloud Functions write)
       match /metrics/current {
-        allow read: if isOwner(studentId) || hasRole("teacher");
-        // Only Cloud Functions can write metrics
+        allow read: if isOwner(studentId) || isTeacher();
         allow write: if false;
       }
     }
 
     // === Teachers Collection ===
     match /teachers/{teacherId} {
-      allow read: if isOwner(teacherId) || hasRole("teacher");
-      allow create, update: if isOwner(teacherId);
+      allow read: if isOwner(teacherId) || isTeacher();
+      allow create: if isOwner(teacherId) && isTeacher();
+      allow update: if isOwner(teacherId) && isTeacher();
     }
 
-    // === Approved Teachers (admin-only) ===
+    // === Approved Teachers (admin-only via Console) ===
     match /approvedTeachers/{docId} {
       allow read: if isAuth();
-      // Only admins can write (managed via Firebase Console)
       allow write: if false;
     }
 
     // === Alerts ===
     match /alerts/{alertId} {
-      // Teachers can read all alerts
-      allow read: if hasRole("teacher");
+      allow read: if isTeacher();
       // Only Cloud Functions create alerts
       allow create: if false;
-      // Teachers can update (resolve) alerts
-      allow update: if hasRole("teacher")
+      // Teachers can resolve alerts (must set themselves as resolver)
+      allow update: if isTeacher()
         && request.resource.data.resolved == true
         && request.resource.data.resolvedBy == request.auth.uid;
+      allow delete: if false;
     }
 
     // === Interventions ===
     match /interventions/{noteId} {
-      allow read: if hasRole("teacher");
-      allow create: if hasRole("teacher")
-        && request.resource.data.teacherId == request.auth.uid;
+      allow read: if isTeacher();
+      allow create: if isTeacher()
+        && request.resource.data.teacherId == request.auth.uid
+        && request.resource.data.studentId is string;
       allow update, delete: if false;
     }
   }

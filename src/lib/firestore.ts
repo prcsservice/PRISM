@@ -163,6 +163,19 @@ export async function getTeacherProfile(uid: string): Promise<Teacher | null> {
     return snap.exists() ? (snap.data() as Teacher) : null;
 }
 
+export async function updateTeacherProfile(uid: string, data: Partial<Teacher>) {
+    await updateDoc(doc(db, "teachers", uid), data);
+}
+
+// ===== Data Deletion =====
+
+export async function requestDataDeletion(uid: string) {
+    await updateDoc(doc(db, "users", uid), {
+        deletionRequested: true,
+        deletionRequestedAt: Timestamp.now(),
+    });
+}
+
 // ===== Alerts =====
 
 export async function getAlerts(filters?: {

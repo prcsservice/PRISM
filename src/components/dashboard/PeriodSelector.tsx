@@ -1,7 +1,7 @@
 "use client";
 
 interface PeriodSelectorProps {
-    periods: { label: string; value: number }[];
+    periods?: { label: string; value: number }[];
     selected: number;
     onChange: (value: number) => void;
 }
@@ -24,8 +24,8 @@ export default function PeriodSelector({
                     key={p.value}
                     onClick={() => onChange(p.value)}
                     className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${selected === p.value
-                            ? "bg-accent text-black"
-                            : "text-text-secondary hover:text-text-primary"
+                        ? "bg-accent text-black"
+                        : "text-text-secondary hover:text-text-primary"
                         }`}
                 >
                     {p.label}

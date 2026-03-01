@@ -2,6 +2,7 @@
 
 import { useTeacherData } from "@/hooks/useTeacherData";
 import DataTable from "@/components/dashboard/DataTable";
+import ExportButton from "@/components/dashboard/ExportButton";
 import { RiskBadge } from "@/components/ui/RiskBadge";
 import Input from "@/components/ui/Input";
 import { useState } from "react";
@@ -48,14 +49,28 @@ export default function TeacherStudentsPage() {
                     <p className="text-text-secondary">All actively monitored students in {profile?.department || "your department"}.</p>
                 </div>
 
-                <div className="relative w-full md:w-64">
-                    <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
-                    <input
-                        type="text"
-                        placeholder="Search by name or roll no..."
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        className="w-full h-10 bg-bg-secondary border border-border-primary rounded-md pl-9 pr-4 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-[#A3E635] transition-colors"
+                <div className="flex items-center gap-3 w-full md:w-auto">
+                    <div className="relative flex-1 md:w-64">
+                        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
+                        <input
+                            type="text"
+                            placeholder="Search by name or roll no..."
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            className="w-full h-10 bg-bg-secondary border border-border-primary rounded-md pl-9 pr-4 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-[#A3E635] transition-colors"
+                        />
+                    </div>
+                    <ExportButton
+                        data={filteredStudents.map(s => ({
+                            Name: s.name,
+                            "Roll Number": s.rollNo,
+                            Department: s.department,
+                            Section: s.section,
+                            Year: s.year,
+                            "Risk Level": s.metrics?.riskLevel ?? "N/A",
+                            "Risk Score": s.metrics?.riskScore ? Math.round(s.metrics.riskScore * 100) + "%" : "N/A",
+                        }))}
+                        filename="prism_students"
                     />
                 </div>
             </div>
