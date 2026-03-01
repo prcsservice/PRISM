@@ -1,26 +1,134 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* ===== PRISM Design System v1.0 ===== */
+
+@font-face {
+  font-family: 'Haffer';
+  src: url('/fonts/68a5df2de5b7c113032b4047_HafferStandardUprights-VF.ttf') format('truetype');
+  font-weight: 100 900;
+  font-style: auto;
+  font-display: swap;   
+}
+
+@font-face {
+  font-family: 'Haffer Mono';
+  src: url('/fonts/HafferMonoRegular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;   
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-bg-primary: var(--bg-primary);
+  --color-bg-secondary: var(--bg-secondary);
+  --color-bg-tertiary: var(--bg-tertiary);
+  --color-bg-hover: var(--bg-hover);
+  --color-accent: var(--accent);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+  --color-border-primary: var(--border-primary);
+  --color-border-secondary: var(--border-secondary);
+  --color-border-hover: var(--border-hover);
+  --font-sans: 'Haffer', sans-serif;
+  --font-mono: 'Haffer Mono', monospace;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* ===== Light Theme (Default) ===== */
+:root,
+[data-theme="light"] {
+  --bg-primary: #FFFFFF; /* white */
+  --bg-secondary: #F3F4F6; /* gray-100 */
+  --bg-tertiary: #E5E7EB; /* gray-200 */
+  --bg-hover: #D1D5DB; /* gray-300 */
+  
+  --accent: #A3E635; /* Same vibrance */
+  
+  --text-primary: #111827; /* gray-900 */
+  --text-secondary: #4B5563; /* gray-600 */
+  --text-muted: #6B7280; /* gray-500 */
+  
+  --border-primary: #E5E7EB; /* gray-200 */
+  --border-secondary: #D1D5DB; /* gray-300 */
+  --border-hover: #9CA3AF; /* gray-400 */
+}
+
+/* ===== Dark Theme ===== */
+[data-theme="dark"] {
+  --bg-primary: #000000;
+  --bg-secondary: #0A0A0A;
+  --bg-tertiary: #141414;
+  --bg-hover: #1A1A1A;
+  
+  --accent: #A1FF62;
+  
+  --text-primary: #FFFFFF;
+  --text-secondary: #A0A0A0;
+  --text-muted: #6B6B6B;
+  
+  --border-primary: #1F1F1F;
+  --border-secondary: #2A2A2A;
+  --border-hover: #333333;
+}
+
+/* ===== Base Styles ===== */
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  font-family: var(--font-sans);
+}
+
+/* ===== Typography Utilities ===== */
+.label-uppercase {
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.mono-number {
+  font-family: var(--font-mono);
+  font-weight: 700;
+}
+
+.mono-sm {
+  font-family: var(--font-mono);
+  font-weight: 500;
+  font-size: 14px;
+}
+
+/* ===== Scrollbar ===== */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-secondary);
+}
+
+/* ===== Selection ===== */
+::selection {
+  background: var(--accent);
+  color: #000000;
 }
