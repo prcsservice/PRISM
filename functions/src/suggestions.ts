@@ -1,89 +1,7 @@
-import { NormalizedFeatures, clamp01 } from "./normalization";
-import type { RiskLevel } from "./types";
-
-// Weights for the deterministic scoring model
-const WEIGHTS = {
-    stress: {
-        sleepNorm: 0.20,
-        screenTimeNorm: 0.15,
-        moodNorm: 0.25,
-        studyNorm: 0.10,
-        socialNorm: 0.10,
-        marksNorm: 0.05,
-        attendanceNorm: 0.10,
-        feedbackNorm: 0.05,
-    },
-    failure: {
-        sleepNorm: 0.10,
-        screenTimeNorm: 0.10,
-        moodNorm: 0.15,
-        studyNorm: 0.15,
-        socialNorm: 0.05,
-        marksNorm: 0.25,
-        attendanceNorm: 0.15,
-        feedbackNorm: 0.05,
-    },
-    attendanceDecline: {
-        sleepNorm: 0.15,
-        screenTimeNorm: 0.20,
-        moodNorm: 0.20,
-        studyNorm: 0.10,
-        socialNorm: 0.10,
-        marksNorm: 0.05,
-        attendanceNorm: 0.15,
-        feedbackNorm: 0.05,
-    },
-};
-
-function weightedSum(features: NormalizedFeatures, weights: Record<string, number>): number {
-    let sum = 0;
-    for (const [key, weight] of Object.entries(weights)) {
-        sum += (features[key as keyof NormalizedFeatures] ?? 0) * weight;
-    }
-    return clamp01(sum);
-}
-
-export interface FallbackPrediction {
-    stressLevel: number;
-    failureProbability: number;
-    attendanceDecline: number;
-    riskScore: number;
-    riskLevel: RiskLevel;
-    suggestions: string[];
-    explanation: string;
-}
-
-export function computeFallbackPrediction(features: NormalizedFeatures): FallbackPrediction {
-    const stressLevel = weightedSum(features, WEIGHTS.stress);
-    const failureProbability = weightedSum(features, WEIGHTS.failure);
-    const attendanceDecline = weightedSum(features, WEIGHTS.attendanceDecline);
-
-    // Overall risk score: weighted average of the three sub-scores
-    const riskScore = clamp01(stressLevel * 0.4 + failureProbability * 0.4 + attendanceDecline * 0.2);
-
-    // Risk level classification
-    let riskLevel: RiskLevel = "Low";
-    if (riskScore >= 0.7) riskLevel = "High";
-    else if (riskScore >= 0.4) riskLevel = "Moderate";
-
-    // Context-aware, varied suggestions
-    const suggestions = generateSuggestions(features, riskLevel, stressLevel, failureProbability);
-    const explanation = generateExplanation(features, stressLevel, failureProbability, attendanceDecline, riskLevel);
-
-    return {
-        stressLevel,
-        failureProbability,
-        attendanceDecline,
-        riskScore,
-        riskLevel,
-        suggestions,
-        explanation,
-    };
-}
+import { NormalizedFeatures, RiskLevel } from "./normalization";
 
 // ===== Suggestion Pool System =====
 // Each factor has multiple suggestion variants to avoid repetitive output.
-// A hash of normalized values is used to pick a different variant each time.
 
 const SLEEP_SUGGESTIONS = [
     "Try to maintain at least 7-8 hours of sleep per night for better focus and emotional regulation.",
@@ -147,13 +65,11 @@ const LOW_RISK_SUGGESTIONS = [
 ];
 
 function pickVariant(pool: string[], features: NormalizedFeatures): string {
-    // Use a simple hash of all feature values to deterministically pick a variant
-    // This ensures different inputs produce different suggestions
     const hash = Object.values(features).reduce((acc, v) => acc + Math.round(v * 1000), 0);
     return pool[hash % pool.length];
 }
 
-function generateSuggestions(
+export function generateFallbackSuggestions(
     features: NormalizedFeatures,
     riskLevel: RiskLevel,
     stressLevel: number,
@@ -161,18 +77,16 @@ function generateSuggestions(
 ): string[] {
     const suggestions: string[] = [];
 
-    // Sort contributing factors by severity to prioritize the most relevant suggestions
-    const factors: Array<{ key: string; value: number; threshold: number; pool: string[] }> = [
-        { key: "sleep", value: features.sleepNorm, threshold: 0.5, pool: SLEEP_SUGGESTIONS },
-        { key: "screen", value: features.screenTimeNorm, threshold: 0.5, pool: SCREEN_TIME_SUGGESTIONS },
-        { key: "mood", value: features.moodNorm, threshold: 0.5, pool: MOOD_SUGGESTIONS },
-        { key: "study", value: features.studyNorm, threshold: 0.5, pool: STUDY_SUGGESTIONS },
-        { key: "social", value: features.socialNorm, threshold: 0.5, pool: SOCIAL_SUGGESTIONS },
-        { key: "marks", value: features.marksNorm, threshold: 0.5, pool: MARKS_SUGGESTIONS },
-        { key: "attendance", value: features.attendanceNorm, threshold: 0.4, pool: ATTENDANCE_SUGGESTIONS },
+    const factors: Array<{ value: number; threshold: number; pool: string[] }> = [
+        { value: features.sleepNorm, threshold: 0.5, pool: SLEEP_SUGGESTIONS },
+        { value: features.screenTimeNorm, threshold: 0.5, pool: SCREEN_TIME_SUGGESTIONS },
+        { value: features.moodNorm, threshold: 0.5, pool: MOOD_SUGGESTIONS },
+        { value: features.studyNorm, threshold: 0.5, pool: STUDY_SUGGESTIONS },
+        { value: features.socialNorm, threshold: 0.5, pool: SOCIAL_SUGGESTIONS },
+        { value: features.marksNorm, threshold: 0.5, pool: MARKS_SUGGESTIONS },
+        { value: features.attendanceNorm, threshold: 0.4, pool: ATTENDANCE_SUGGESTIONS },
     ];
 
-    // Sort by severity (highest normalized value first) to prioritize top concerns
     const flagged = factors
         .filter(f => f.value > f.threshold)
         .sort((a, b) => b.value - a.value);
@@ -193,7 +107,7 @@ function generateSuggestions(
     return suggestions.slice(0, 4);
 }
 
-function generateExplanation(
+export function generateFallbackExplanation(
     features: NormalizedFeatures,
     stressLevel: number,
     failureProbability: number,

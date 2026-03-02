@@ -61,7 +61,15 @@ export default function StudentSuggestionsPage() {
                                 )}
                             </div>
                             {latestPrediction && (
-                                <div className="ml-auto">
+                                <div className="ml-auto flex items-center gap-2">
+                                    {latestPrediction.modelUsed && (
+                                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${latestPrediction.modelUsed === 'gemini'
+                                                ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                                                : 'bg-bg-hover text-text-muted border border-border-primary'
+                                            }`}>
+                                            {latestPrediction.modelUsed === 'gemini' ? '✦ AI Generated' : '⚙ Analytical Model'}
+                                        </span>
+                                    )}
                                     <RiskBadge variant={(latestPrediction.riskLevel || "Low").toLowerCase() as any} className="capitalize">
                                         {latestPrediction.riskLevel}
                                     </RiskBadge>
@@ -157,6 +165,14 @@ export default function StudentSuggestionsPage() {
                                                 >
                                                     {pred.riskLevel}
                                                 </RiskBadge>
+                                                {pred.modelUsed && (
+                                                    <span className={`text-[9px] px-1.5 py-0 rounded-full ${pred.modelUsed === 'gemini'
+                                                            ? 'text-emerald-400'
+                                                            : 'text-text-muted'
+                                                        }`}>
+                                                        {pred.modelUsed === 'gemini' ? '✦ AI' : '⚙'}
+                                                    </span>
+                                                )}
                                                 <span className="text-sm text-text-primary">
                                                     {pred.timestamp?.toDate?.()?.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
                                                 </span>

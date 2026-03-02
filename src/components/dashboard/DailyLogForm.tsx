@@ -64,16 +64,19 @@ export default function DailyLogForm({ onSubmit, disabled = false, existingLog }
 
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
                 <div className="flex flex-col gap-2">
-                    <label className="text-sm font-medium text-text-primary">Mood</label>
-                    <div className="flex gap-2">
+                    <label className="text-sm font-medium text-text-primary" id="mood-label">Mood</label>
+                    <div className="flex gap-2" role="radiogroup" aria-labelledby="mood-label">
                         {([1, 2, 3, 4, 5] as Mood[]).map((v) => (
                             <button
                                 key={v}
                                 onClick={() => !isReadOnly && setMood(v)}
                                 disabled={isReadOnly}
+                                role="radio"
+                                aria-checked={mood === v}
+                                aria-label={`Mood: ${MOOD_LABELS[v - 1]}`}
                                 className={`flex-1 py-2.5 rounded-lg text-xs font-medium transition-all border ${mood === v
-                                        ? "bg-accent text-black border-accent"
-                                        : "bg-bg-secondary text-text-secondary border-border-primary hover:border-border-hover"
+                                    ? "bg-accent text-black border-accent"
+                                    : "bg-bg-secondary text-text-secondary border-border-primary hover:border-border-hover"
                                     } disabled:cursor-not-allowed`}
                             >
                                 {MOOD_LABELS[v - 1]}
@@ -89,16 +92,19 @@ export default function DailyLogForm({ onSubmit, disabled = false, existingLog }
 
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}>
                 <div className="flex flex-col gap-2">
-                    <label className="text-sm font-medium text-text-primary">Social Interaction</label>
-                    <div className="flex gap-2">
+                    <label className="text-sm font-medium text-text-primary" id="social-label">Social Interaction</label>
+                    <div className="flex gap-2" role="radiogroup" aria-labelledby="social-label">
                         {([1, 2, 3, 4, 5] as Social[]).map((v) => (
                             <button
                                 key={v}
                                 onClick={() => !isReadOnly && setSocial(v)}
                                 disabled={isReadOnly}
+                                role="radio"
+                                aria-checked={social === v}
+                                aria-label={`Social interaction: ${SOCIAL_LABELS[v - 1]}`}
                                 className={`flex-1 py-2.5 rounded-lg text-xs font-medium transition-all border ${social === v
-                                        ? "bg-accent text-black border-accent"
-                                        : "bg-bg-secondary text-text-secondary border-border-primary hover:border-border-hover"
+                                    ? "bg-accent text-black border-accent"
+                                    : "bg-bg-secondary text-text-secondary border-border-primary hover:border-border-hover"
                                     } disabled:cursor-not-allowed`}
                             >
                                 {SOCIAL_LABELS[v - 1]}

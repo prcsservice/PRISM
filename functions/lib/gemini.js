@@ -1,15 +1,14 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.callGeminiPrediction = callGeminiPrediction;
-const vertexai_1 = require("@google-cloud/vertexai");
 const firebase_functions_1 = require("firebase-functions");
 const PREDICTION_PROMPT = `You are PRISM's AI prediction engine — an academic early-warning system. Given a student's normalized behavioral and academic features (each 0-1, higher = worse), generate a structured risk assessment.
 
 RULES:
 - All scores must be between 0 and 1
 - riskLevel: "Low" if stressLevel < 0.4, "Moderate" if 0.4-0.7, "High" if >= 0.7
-- Provide 2-4 actionable, compassionate suggestions
-- Explainability must reference specific contributing factors
+- Provide 2-4 actionable, compassionate, personalized suggestions
+- Explainability must be written in plain, student-friendly language — do NOT use technical variable names or normalized scores. Instead, describe findings using everyday terms like "sleep habits", "screen time", "mood", "study patterns", "social activity", "academic marks", "attendance". For example: "Your stress is low because you maintain good sleep and study habits" NOT "sleepNorm: 0.000"
 - This is NOT a medical diagnosis; it's an academic support tool
 
 FEATURES:
@@ -22,19 +21,19 @@ Respond with ONLY valid JSON in this exact schema:
   "failureProbability": <number 0-1>,
   "attendanceDecline": <number 0-1>,
   "suggestions": ["<suggestion1>", "<suggestion2>"],
-  "explainability": "<explanation string>"
+  "explainability": "<plain-language explanation for the student>"
 }`;
 function buildPrompt(features, rawInput) {
     var _a, _b, _c, _d, _e, _f, _g, _h;
     const featureText = `
-- Sleep Risk (sleepNorm): ${features.sleepNorm.toFixed(3)} [raw: ${(_a = rawInput.sleepHours) !== null && _a !== void 0 ? _a : "N/A"} hrs]
-- Screen Time Risk (screenTimeNorm): ${features.screenTimeNorm.toFixed(3)} [raw: ${(_b = rawInput.screenTimeHours) !== null && _b !== void 0 ? _b : "N/A"} hrs]
-- Mood Risk (moodNorm): ${features.moodNorm.toFixed(3)} [raw: ${(_c = rawInput.mood) !== null && _c !== void 0 ? _c : "N/A"}/5]
-- Study Risk (studyNorm): ${features.studyNorm.toFixed(3)} [raw: ${(_d = rawInput.studyHours) !== null && _d !== void 0 ? _d : "N/A"} hrs]
-- Social Risk (socialNorm): ${features.socialNorm.toFixed(3)} [raw: ${(_e = rawInput.socialInteraction) !== null && _e !== void 0 ? _e : "N/A"}/5]
-- Marks Risk (marksNorm): ${features.marksNorm.toFixed(3)} [raw CIA avg: ${(_f = rawInput.ciaAverage) !== null && _f !== void 0 ? _f : "N/A"}]
-- Attendance Risk (attendanceNorm): ${features.attendanceNorm.toFixed(3)} [raw: ${(_g = rawInput.attendancePercentage) !== null && _g !== void 0 ? _g : "N/A"}%]
-- Feedback Risk (feedbackNorm): ${features.feedbackNorm.toFixed(3)} [raw: ${(_h = rawInput.facultyFeedbackScore) !== null && _h !== void 0 ? _h : "N/A"}/5]`;
+- Sleep Risk: ${features.sleepNorm.toFixed(3)} [raw: ${(_a = rawInput.sleepHours) !== null && _a !== void 0 ? _a : "N/A"} hours of sleep]
+- Screen Time Risk: ${features.screenTimeNorm.toFixed(3)} [raw: ${(_b = rawInput.screenTimeHours) !== null && _b !== void 0 ? _b : "N/A"} hours]
+- Mood Risk: ${features.moodNorm.toFixed(3)} [raw: ${(_c = rawInput.mood) !== null && _c !== void 0 ? _c : "N/A"} out of 5]
+- Study Risk: ${features.studyNorm.toFixed(3)} [raw: ${(_d = rawInput.studyHours) !== null && _d !== void 0 ? _d : "N/A"} hours of study]
+- Social Risk: ${features.socialNorm.toFixed(3)} [raw: ${(_e = rawInput.socialInteraction) !== null && _e !== void 0 ? _e : "N/A"} out of 5]
+- Marks Risk: ${features.marksNorm.toFixed(3)} [raw CIA average: ${(_f = rawInput.ciaAverage) !== null && _f !== void 0 ? _f : "N/A"}]
+- Attendance Risk: ${features.attendanceNorm.toFixed(3)} [raw: ${(_g = rawInput.attendancePercentage) !== null && _g !== void 0 ? _g : "N/A"}%]
+- Faculty Feedback Risk: ${features.feedbackNorm.toFixed(3)} [raw: ${(_h = rawInput.facultyFeedbackScore) !== null && _h !== void 0 ? _h : "N/A"} out of 5]`;
     return PREDICTION_PROMPT.replace("{{FEATURES}}", featureText);
 }
 function validateResponse(data) {
@@ -60,8 +59,10 @@ function validateResponse(data) {
  */
 async function callGeminiPrediction(features, rawInput) {
     try {
-        // Vertex AI uses default credentials from Cloud Functions environment
-        const vertexAI = new vertexai_1.VertexAI({
+        // Lazy-load Vertex AI SDK to avoid deployment timeout
+        // (the module is heavy and causes Firebase deploy analysis to exceed 10s)
+        const { VertexAI } = require("@google-cloud/vertexai");
+        const vertexAI = new VertexAI({
             project: process.env.GCLOUD_PROJECT || process.env.GCP_PROJECT || "",
             location: "us-central1",
         });

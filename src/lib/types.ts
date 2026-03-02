@@ -68,6 +68,7 @@ export interface Prediction {
     explanation: string;
     riskLevel: RiskLevel;
     suggestions: string[];
+    modelUsed?: "gemini" | "fallback";
 }
 
 export interface StudentMetrics {

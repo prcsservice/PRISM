@@ -52,6 +52,7 @@ export default function InterventionNotes({ interventions, onAddNote, loading = 
     const [actionStatus, setActionStatus] = useState("completed");
     const [submitting, setSubmitting] = useState(false);
     const [showSuggestions, setShowSuggestions] = useState(true);
+    const [selectedSuggestion, setSelectedSuggestion] = useState<string | null>(null);
 
     const handleSubmit = async () => {
         if (!notes.trim() || !actionType || !onAddNote) return;
@@ -62,30 +63,101 @@ export default function InterventionNotes({ interventions, onAddNote, loading = 
             setNotes("");
             setActionType("");
             setActionStatus("completed");
+            setSelectedSuggestion(null);
         } finally {
             setSubmitting(false);
         }
     };
 
     const handleQuickAction = (suggestion: string) => {
-        setNotes(suggestion);
+        // Generate a warm, supportive student-facing message from the teacher suggestion
+        const studentMessage = generateStudentMessage(suggestion);
+        setNotes(studentMessage);
+        setSelectedSuggestion(suggestion);
+
         // Auto-detect action type from suggestion text
-        if (suggestion.toLowerCase().includes("wellness check") || suggestion.toLowerCase().includes("one-on-one")) {
-            setActionType("scheduled_meeting");
-        } else if (suggestion.toLowerCase().includes("counseling") || suggestion.toLowerCase().includes("counselor")) {
-            setActionType("referred_counselor");
-        } else if (suggestion.toLowerCase().includes("parent") || suggestion.toLowerCase().includes("guardian")) {
-            setActionType("contacted_parent");
-        } else if (suggestion.toLowerCase().includes("study") || suggestion.toLowerCase().includes("academic") || suggestion.toLowerCase().includes("tutoring")) {
-            setActionType("academic_support");
-        } else if (suggestion.toLowerCase().includes("encouragement") || suggestion.toLowerCase().includes("positive")) {
+        const lower = suggestion.toLowerCase();
+        if (lower.includes("check-in") || lower.includes("wellness") || lower.includes("one-on-one") || lower.includes("message")) {
             setActionType("sent_encouragement");
-        } else if (suggestion.toLowerCase().includes("peer")) {
+        } else if (lower.includes("meeting") || lower.includes("schedule") || lower.includes("review")) {
+            setActionType("scheduled_meeting");
+        } else if (lower.includes("counseling") || lower.includes("counselor")) {
+            setActionType("referred_counselor");
+        } else if (lower.includes("parent") || lower.includes("guardian")) {
+            setActionType("contacted_parent");
+        } else if (lower.includes("study") || lower.includes("academic") || lower.includes("tutoring") || lower.includes("cia") || lower.includes("marks")) {
+            setActionType("academic_support");
+        } else if (lower.includes("peer")) {
             setActionType("peer_mentoring");
+        } else if (lower.includes("encouragement") || lower.includes("positive") || lower.includes("trajectory")) {
+            setActionType("sent_encouragement");
+        } else if (lower.includes("call") || lower.includes("phone")) {
+            setActionType("called_student");
         } else {
             setActionType("custom");
         }
     };
+
+    /**
+     * Converts a teacher-facing AI suggestion into a warm, supportive student-facing message.
+     * The teacher can still review and edit before sending.
+     */
+    function generateStudentMessage(suggestion: string): string {
+        const lower = suggestion.toLowerCase();
+
+        // Check-in / well-being
+        if (lower.includes("check-in") || lower.includes("well-being") || lower.includes("wellness")) {
+            return "Hey! Just wanted to check in and see how you're doing. If you ever want to talk about anything — academic or otherwise — I'm always here. Take care of yourself! 😊";
+        }
+
+        // CIA / marks review
+        if (lower.includes("cia") || lower.includes("marks") || lower.includes("weak area") || lower.includes("performance")) {
+            return "Hi! I'd like us to sit down together and go over your recent assessments. We can identify a few areas to work on and come up with a plan — nothing to worry about, it's all about finding ways to help you improve. Let me know a good time to meet! 📚";
+        }
+
+        // Academic recovery / study plan
+        if (lower.includes("recovery plan") || lower.includes("study session") || lower.includes("study plan")) {
+            return "Hi! I'd like to help you put together a study plan that works for you. We can break things down into small, manageable steps so it feels less overwhelming. Let's chat soon — I'm confident we can turn things around together! 💪";
+        }
+
+        // Peer tutoring / study group
+        if (lower.includes("peer") || lower.includes("tutoring") || lower.includes("study group")) {
+            return "Hey! I think you'd really benefit from joining a study group or getting paired with a peer tutor. It's a great way to learn together and make studying less stressful. Would you be open to trying it? I can help set it up! 🤝";
+        }
+
+        // Guardian / parent contact
+        if (lower.includes("guardian") || lower.includes("parent") || lower.includes("family")) {
+            return "Hi! I want you to know that I care about your progress and well-being. I'm planning to have a quick chat with your family just to make sure we're all working together to support you. This is nothing negative — it's about making sure you have the best support system. 💛";
+        }
+
+        // Faculty coordination
+        if (lower.includes("faculty") || lower.includes("coordinate") || lower.includes("other faculty")) {
+            return "Hey! I'm coordinating with your other teachers to make sure we're all aligned on how to best support you. If there's anything specific you'd like us to know or help with, don't hesitate to reach out! 🙌";
+        }
+
+        // Counselor referral
+        if (lower.includes("counselor") || lower.includes("counseling")) {
+            return "Hi! I want to let you know about the counseling support available on campus. Speaking with a counselor can be really helpful — it's a safe, confidential space to talk things through. Would you like me to help you schedule a session? There's absolutely no stigma in asking for support. 💙";
+        }
+
+        // Encouragement / positive trajectory
+        if (lower.includes("encouragement") || lower.includes("positive") || lower.includes("maintain") || lower.includes("trajectory")) {
+            return "Hey! Just wanted to say — you're doing great, and I've noticed your efforts. Keep up the amazing work! Remember, consistency is key, and you're on the right track. I'm really proud of your progress. 🌟";
+        }
+
+        // Schedule meeting (generic)
+        if (lower.includes("meeting") || lower.includes("schedule") || lower.includes("one-on-one")) {
+            return "Hi! I'd love to have a quick chat with you. Nothing to worry about — I just want to see how you're doing and if there's anything I can help with. Let me know when you're free! 😊";
+        }
+
+        // Attendance
+        if (lower.includes("attendance")) {
+            return "Hey! I noticed your attendance has been a bit low recently. If there's anything going on that's making it hard to come to class, please let me know — I'd like to help. Your presence in class really makes a difference, and I want to make sure you don't miss out. 📋";
+        }
+
+        // Default: generic supportive message
+        return `Hi! I wanted to reach out because I care about how you're doing. ${suggestion.replace(/the student('s)?/gi, "your").replace(/student/gi, "you")} — let me know if you'd like to talk about it. I'm here to help! 😊`;
+    }
 
     const formatDate = (timestamp: any) => {
         if (!timestamp) return "";
@@ -153,6 +225,18 @@ export default function InterventionNotes({ interventions, onAddNote, loading = 
                             options={STATUS_OPTIONS}
                         />
                     </div>
+                    {selectedSuggestion && (
+                        <div className="flex items-start gap-2 px-3 py-2 bg-[#A3E635]/5 border border-[#A3E635]/20 rounded-lg">
+                            <span className="text-[10px] font-semibold text-[#A3E635] uppercase tracking-wider shrink-0 mt-0.5">Based on:</span>
+                            <span className="text-xs text-text-secondary flex-1">{selectedSuggestion}</span>
+                            <button
+                                onClick={() => setSelectedSuggestion(null)}
+                                className="text-[10px] text-text-muted hover:text-text-secondary shrink-0"
+                            >
+                                ✕
+                            </button>
+                        </div>
+                    )}
                     <textarea
                         value={notes}
                         onChange={(e) => setNotes(e.target.value)}
@@ -210,7 +294,7 @@ export default function InterventionNotes({ interventions, onAddNote, loading = 
                                     <p className="text-sm text-text-secondary leading-relaxed">{note.notes}</p>
                                     {note.outcome && note.outcome !== "pending" && (
                                         <div className={`mt-2 text-xs font-medium capitalize ${note.outcome === "improved" ? "text-green-400" :
-                                                note.outcome === "worsened" ? "text-red-400" : "text-text-muted"
+                                            note.outcome === "worsened" ? "text-red-400" : "text-text-muted"
                                             }`}>
                                             Outcome: {note.outcome.replace("_", " ")}
                                         </div>

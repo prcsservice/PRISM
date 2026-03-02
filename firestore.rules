@@ -71,8 +71,13 @@ service cloud.firestore {
           && request.resource.data.mood <= 5
           && request.resource.data.screenTimeHours is number
           && request.resource.data.screenTimeHours >= 0
+          && request.resource.data.screenTimeHours <= 24
           && request.resource.data.studyHours is number
-          && request.resource.data.studyHours >= 0;
+          && request.resource.data.studyHours >= 0
+          && request.resource.data.studyHours <= 24
+          && request.resource.data.socialInteraction is number
+          && request.resource.data.socialInteraction >= 1
+          && request.resource.data.socialInteraction <= 5;
         // Students cannot update or delete logs (immutable)
         allow update, delete: if false;
       }
@@ -115,8 +120,9 @@ service cloud.firestore {
 
     // === Interventions ===
     match /interventions/{noteId} {
-      // Both teachers and students can read (students see mentor actions)
-      allow read: if isAuth();
+      // Teachers can read all interventions; students can only read their own
+      allow read: if isTeacher()
+        || (isAuth() && resource.data.studentId == request.auth.uid);
       allow create: if isTeacher()
         && request.resource.data.teacherId == request.auth.uid
         && request.resource.data.studentId is string;

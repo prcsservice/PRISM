@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { getAlerts, resolveAlert as resolveAlertFn, onAlertsChange } from "@/lib/firestore";
+import { resolveAlert as resolveAlertFn, updateAlertStatus as updateAlertStatusFn, onAlertsChange } from "@/lib/firestore";
 import type { Alert } from "@/lib/types";
 
 export function useAlerts() {
@@ -40,13 +40,21 @@ export function useAlerts() {
         }
     }, [user]);
 
-    const updateAlertStatus = useCallback(async (alertId: string, status: string, actionTaken?: string) => {
-        // For backwards compatibility with existing page usage
-        if (status === "resolved") {
-            return resolveAlertAction(alertId, actionTaken);
+    const updateAlertStatus = useCallback(async (alertId: string, status: string, notes?: string) => {
+        if (!user) return false;
+        try {
+            if (status === "resolved") {
+                return resolveAlertAction(alertId, notes);
+            }
+            await updateAlertStatusFn(alertId, status, notes);
+            return true;
+        } catch (err: any) {
+            console.error("Error updating alert status:", err);
+            setError(err.message);
+            return false;
         }
-        return false;
-    }, [resolveAlertAction]);
+    }, [user, resolveAlertAction]);
 
     return { alerts, loading, error, resolveAlert: resolveAlertAction, updateAlertStatus };
 }
+

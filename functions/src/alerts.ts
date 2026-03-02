@@ -90,7 +90,7 @@ export async function checkAndCreateAlert(data: AlertCheck): Promise<string | nu
                         riskLevel: data.riskLevel,
                         reason,
                         suggestedActions: mentorSuggestions,
-                        appUrl: `https://prism-app.vercel.app/dashboard/teacher/student/${data.studentId}`,
+                        appUrl: `${process.env.APP_URL || 'https://prism-app.vercel.app'}/dashboard/teacher/student/${data.studentId}`,
                     }).catch(() => { });
                 }
             }

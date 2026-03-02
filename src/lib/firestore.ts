@@ -103,7 +103,8 @@ export async function getDailyLogs(studentId: string, days: number = 30): Promis
 }
 
 export async function hasLoggedToday(studentId: string): Promise<boolean> {
-    const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
+    const now = new Date();
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     const q = query(
         collection(db, "students", studentId, "dailyLogs"),
         where("date", "==", today),
@@ -114,7 +115,8 @@ export async function hasLoggedToday(studentId: string): Promise<boolean> {
 }
 
 export async function getTodayLog(studentId: string): Promise<DailyLog | null> {
-    const today = new Date().toISOString().split("T")[0];
+    const now = new Date();
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     const q = query(
         collection(db, "students", studentId, "dailyLogs"),
         where("date", "==", today),
@@ -227,6 +229,20 @@ export async function resolveAlert(
         resolutionNotes: notes,
         status: "resolved",
     });
+}
+
+export async function updateAlertStatus(
+    alertId: string,
+    status: string,
+    notes?: string
+) {
+    const update: Record<string, any> = {
+        status,
+        updatedAt: Timestamp.now(),
+    };
+    if (notes) update.resolutionNotes = notes;
+    if (status === "resolved") update.resolved = true;
+    await updateDoc(doc(db, "alerts", alertId), update);
 }
 
 export async function createAlert(data: Omit<Alert, "id" | "alertId">) {

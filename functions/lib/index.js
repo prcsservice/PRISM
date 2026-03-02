@@ -39,6 +39,7 @@ const scheduler_1 = require("firebase-functions/v2/scheduler");
 const firebase_functions_1 = require("firebase-functions");
 const admin = __importStar(require("firebase-admin"));
 const normalization_1 = require("./normalization");
+const suggestions_1 = require("./suggestions");
 const alerts_1 = require("./alerts");
 const gemini_1 = require("./gemini");
 const notifications_1 = require("./notifications");
@@ -218,8 +219,8 @@ exports.onDailyLogCreated = (0, firestore_1.onDocumentCreated)("students/{studen
             attendanceDecline = scores.attendanceDecline;
             riskScore = scores.riskScore;
             riskLevel = scores.riskLevel;
-            suggestions = generateSuggestions(features, scores);
-            explanation = generateExplanation(features, scores);
+            suggestions = (0, suggestions_1.generateFallbackSuggestions)(features, scores.riskLevel, scores.stressLevel, scores.failureProbability);
+            explanation = (0, suggestions_1.generateFallbackExplanation)(features, scores.stressLevel, scores.failureProbability, scores.attendanceDecline, scores.riskLevel);
             modelUsed = "fallback";
             firebase_functions_1.logger.info(`Fallback model used for student ${studentId}`);
         }
@@ -304,7 +305,7 @@ exports.onDailyLogCreated = (0, firestore_1.onDocumentCreated)("students/{studen
                                 teacherName: tUser.name || "Teacher",
                                 studentName,
                                 stressLevel: Math.round(stressLevel * 100),
-                                appUrl: `https://prism-app.vercel.app/dashboard/teacher/student/${studentId}`,
+                                appUrl: `${process.env.APP_URL || 'https://prism-app.vercel.app'}/dashboard/teacher/student/${studentId}`,
                             }).catch(() => { });
                         }
                     }
@@ -400,56 +401,6 @@ function avg(arr) {
         return 0;
     return arr.reduce((a, b) => a + b, 0) / arr.length;
 }
-function generateSuggestions(features, scores) {
-    const suggestions = [];
-    if (features.sleepNorm > 0.5) {
-        suggestions.push("Try to maintain 7-8 hours of sleep per night for better focus and emotional regulation.");
-    }
-    if (features.screenTimeNorm > 0.5) {
-        suggestions.push("Consider reducing non-academic screen time. Try the 20-20-20 rule for eye health.");
-    }
-    if (features.moodNorm > 0.5) {
-        suggestions.push("Your mood patterns suggest elevated stress. Consider talking to a counselor or trusted friend.");
-    }
-    if (features.studyNorm > 0.5) {
-        suggestions.push("Increasing structured study time, even by 30 minutes daily, can significantly improve performance.");
-    }
-    if (features.socialNorm > 0.5) {
-        suggestions.push("Social connection is important for mental health. Try joining a study group or campus activity.");
-    }
-    if (features.marksNorm > 0.5) {
-        suggestions.push("Review your recent CIA performance with your faculty advisor for targeted improvement.");
-    }
-    if (features.attendanceNorm > 0.4) {
-        suggestions.push("Regular class attendance strongly correlates with better outcomes. Aim for 75%+ attendance.");
-    }
-    if (scores.riskLevel === "High" && suggestions.length < 3) {
-        suggestions.push("Reach out to your academic counselor for personalized support and guidance.");
-    }
-    if (suggestions.length === 0) {
-        suggestions.push("Keep up the good work! Your current habits are supporting your academic success.");
-    }
-    return suggestions.slice(0, 4);
-}
-function generateExplanation(features, scores) {
-    const factors = [];
-    if (features.sleepNorm > 0.5)
-        factors.push("insufficient sleep");
-    if (features.screenTimeNorm > 0.5)
-        factors.push("high screen time");
-    if (features.moodNorm > 0.5)
-        factors.push("low mood indicators");
-    if (features.marksNorm > 0.5)
-        factors.push("declining CIA scores");
-    if (features.attendanceNorm > 0.4)
-        factors.push("attendance below threshold");
-    if (features.studyNorm > 0.5)
-        factors.push("limited study hours");
-    if (factors.length === 0) {
-        return `Overall risk is ${scores.riskLevel}. All indicators are within healthy ranges.`;
-    }
-    return `Risk assessed as ${scores.riskLevel} based on ${factors.join(", ")}. Stress at ${Math.round(scores.stressLevel * 100)}%, failure probability at ${Math.round(scores.failureProbability * 100)}%.`;
-}
 /**
  * Trigger: When a teacher creates an intervention for a student.
  * Notifies the student that their mentor took action.
@@ -489,7 +440,7 @@ exports.onInterventionCreated = (0, firestore_1.onDocumentCreated)("intervention
                     teacherName,
                     actionType: actionLabel,
                     notes: data.notes || "No additional notes.",
-                    appUrl: "https://prism-app.vercel.app/dashboard/student",
+                    appUrl: `${process.env.APP_URL || 'https://prism-app.vercel.app'}/dashboard/student`,
                 });
             }
         }

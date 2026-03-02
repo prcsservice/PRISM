@@ -5,7 +5,9 @@ import { useAlerts } from "@/hooks/useAlerts";
 import { getTimeGreeting } from "@/lib/utils";
 import MetricCard from "@/components/dashboard/MetricCard";
 import DataTable from "@/components/dashboard/DataTable";
+import Skeleton from "@/components/ui/Skeleton";
 import { RiskBadge } from "@/components/ui/RiskBadge";
+import Link from "next/link";
 import { Users, AlertTriangle, Activity, TrendingUp } from "lucide-react";
 
 export default function TeacherDashboard() {
@@ -17,8 +19,20 @@ export default function TeacherDashboard() {
 
     if (loading) {
         return (
-            <div className="flex items-center justify-center py-20">
-                <div className="w-8 h-8 border-2 border-[#A3E635] border-t-transparent rounded-full animate-spin" />
+            <div className="flex flex-col gap-8 pb-10">
+                <div className="flex flex-col gap-2">
+                    <Skeleton className="h-8 w-64 mb-2" />
+                    <Skeleton className="h-5 w-96" />
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+                    {[1, 2, 3, 4].map((i) => (
+                        <Skeleton key={i} className="h-32 rounded-xl" />
+                    ))}
+                </div>
+                <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+                    <Skeleton className="xl:col-span-2 h-80 rounded-xl" />
+                    <Skeleton className="h-80 rounded-xl" />
+                </div>
             </div>
         );
     }
@@ -100,7 +114,12 @@ export default function TeacherDashboard() {
                 />
                 <MetricCard
                     title="Avg Dept Stress"
-                    value={totalStudents > 0 ? `${Math.round(students.reduce((sum, s) => sum + ((s.metrics?.currentStressLevel ?? 0.4) * 100), 0) / totalStudents)}/100` : "—"}
+                    value={(() => {
+                        const withMetrics = students.filter(s => s.metrics?.currentStressLevel != null);
+                        if (withMetrics.length === 0) return "—";
+                        const avg = Math.round(withMetrics.reduce((sum, s) => sum + (s.metrics!.currentStressLevel * 100), 0) / withMetrics.length);
+                        return `${avg}/100`;
+                    })()}
                     trend={stressTrend}
                     trendLabel={stressTrend === 0 ? "no previous data" : "vs last week"}
                     icon={<TrendingUp size={20} />}
@@ -143,7 +162,7 @@ export default function TeacherDashboard() {
 
                         {alerts.length > 4 && (
                             <div className="pt-2 text-center">
-                                <span className="text-xs text-[#A3E635] hover:underline cursor-pointer">View all alerts &rarr;</span>
+                                <Link href="/dashboard/teacher/alerts" className="text-xs text-[#A3E635] hover:underline">View all alerts &rarr;</Link>
                             </div>
                         )}
                     </div>
