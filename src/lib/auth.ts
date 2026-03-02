@@ -2,6 +2,7 @@ import { GoogleAuthProvider, signInWithPopup, signOut as firebaseSignOut } from 
 import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
 import { Role } from "@/lib/types";
+import { checkApprovedTeacher } from "@/lib/firestore";
 
 const googleProvider = new GoogleAuthProvider();
 
@@ -28,11 +29,10 @@ export async function signInWithGoogle(intendedRole: Role) {
 
         // New user registration flow
         if (intendedRole === "teacher") {
-            // Teachers must be pre-approved in the 'approvedTeachers' collection
-            const approvedRef = doc(db, "approvedTeachers", user.email!);
-            const approvedSnap = await getDoc(approvedRef);
+            // Teachers must be pre-approved — query by email field
+            const isApproved = await checkApprovedTeacher(user.email!);
 
-            if (!approvedSnap.exists()) {
+            if (!isApproved) {
                 await firebaseSignOut(auth);
                 throw new Error("Access Denied: Your email is not on the approved faculty list.");
             }

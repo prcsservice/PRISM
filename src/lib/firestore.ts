@@ -6,7 +6,8 @@ import {
 import { db } from "./firebase";
 import type {
     UserDoc, StudentProfile, StudentAcademic, DailyLog,
-    Prediction, StudentMetrics, Teacher, Alert, Intervention, Role
+    Prediction, StudentMetrics, Teacher, Alert, Intervention, Role,
+    AppNotification
 } from "./types";
 
 // ===== Users =====
@@ -38,8 +39,23 @@ export async function createStudentProfile(uid: string, data: Omit<StudentProfil
 }
 
 export async function getStudentProfile(uid: string): Promise<StudentProfile | null> {
-    const snap = await getDoc(doc(db, "students", uid, "profile", "main"));
-    return snap.exists() ? (snap.data() as StudentProfile) : null;
+    const mainSnap = await getDoc(doc(db, "students", uid, "profile", "main"));
+    if (mainSnap.exists()) return mainSnap.data() as StudentProfile;
+
+    // Fallback: check legacy path (profile/data) and auto-migrate
+    const legacySnap = await getDoc(doc(db, "students", uid, "profile", "data"));
+    if (legacySnap.exists()) {
+        const data = legacySnap.data() as StudentProfile;
+        // Migrate to correct path
+        try {
+            await setDoc(doc(db, "students", uid, "profile", "main"), data);
+        } catch {
+            // If migration fails (permissions), still return data
+        }
+        return data;
+    }
+
+    return null;
 }
 
 export async function updateStudentProfile(uid: string, data: Partial<StudentProfile>) {
@@ -314,4 +330,60 @@ export function onAlertsChange(
     return onSnapshot(q, (snap) => {
         callback(snap.docs.map(d => ({ id: d.id, ...d.data() } as Alert)));
     });
+}
+
+// ===== Notifications =====
+
+export function onNotificationsChange(
+    userId: string,
+    callback: (notifications: AppNotification[]) => void
+) {
+    const q = query(
+        collection(db, "notifications"),
+        where("userId", "==", userId),
+        orderBy("createdAt", "desc"),
+        limit(50)
+    );
+    return onSnapshot(
+        q,
+        (snap) => {
+            callback(snap.docs.map(d => ({ id: d.id, ...d.data() } as AppNotification)));
+        },
+        (error) => {
+            console.error("Notification listener error:", error.message);
+            // If there's a FAILED_PRECONDITION error, it means a composite index is needed
+            // The error message will contain a link to create the index
+            if (error.message.includes("index")) {
+                console.error("You need to create a composite index. Check the error link above.");
+            }
+            // Return empty to avoid crashing
+            callback([]);
+        }
+    );
+}
+
+export async function markNotificationRead(notificationId: string) {
+    try {
+        await updateDoc(doc(db, "notifications", notificationId), { read: true });
+    } catch (error) {
+        console.error("Failed to mark notification read:", error);
+    }
+}
+
+export async function markAllNotificationsRead(userId: string) {
+    try {
+        // Use same query as the listener (only userId filter, no read filter to avoid index issues)
+        const q = query(
+            collection(db, "notifications"),
+            where("userId", "==", userId),
+            orderBy("createdAt", "desc"),
+            limit(50)
+        );
+        const snap = await getDocs(q);
+        const unread = snap.docs.filter(d => d.data().read === false);
+        const promises = unread.map(d => updateDoc(d.ref, { read: true }));
+        await Promise.all(promises);
+    } catch (error) {
+        console.error("Failed to mark all notifications read:", error);
+    }
 }

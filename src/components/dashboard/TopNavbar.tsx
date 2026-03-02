@@ -3,8 +3,8 @@
 import { useTheme } from "@/context/ThemeContext";
 import { useAuth } from "@/hooks/useAuth";
 import { signOut } from "@/lib/auth";
-import { Bell, Search, Sun, Moon, LogOut, Menu, User } from "lucide-react";
-import Button from "@/components/ui/Button";
+import { Search, Sun, Moon, LogOut, Menu } from "lucide-react";
+import NotificationPanel from "@/components/dashboard/NotificationPanel";
 
 export default function TopNavbar() {
     const { theme, toggleTheme } = useTheme();
@@ -47,12 +47,8 @@ export default function TopNavbar() {
                     {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
                 </button>
 
-                {/* Notifications */}
-                <button className="w-9 h-9 relative flex items-center justify-center rounded-full text-text-secondary hover:text-text-primary hover:bg-bg-hover transition-colors">
-                    <Bell size={18} />
-                    {/* Indicator dot */}
-                    <span className="absolute top-2 right-2.5 w-2 h-2 bg-red-500 rounded-full border border-bg-primary" />
-                </button>
+                {/* Notifications - Live */}
+                <NotificationPanel />
 
                 <div className="w-px h-6 bg-border-secondary mx-1 hidden sm:block" />
 

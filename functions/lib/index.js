@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.onAcademicDataUpdated = exports.onDailyLogCreated = exports.onUserDeletionRequested = exports.processDataDeletion = void 0;
+exports.onInterventionCreated = exports.onAcademicDataUpdated = exports.onDailyLogCreated = exports.onUserDeletionRequested = exports.processDataDeletion = void 0;
 const firestore_1 = require("firebase-functions/v2/firestore");
 const scheduler_1 = require("firebase-functions/v2/scheduler");
 const firebase_functions_1 = require("firebase-functions");
@@ -41,6 +41,8 @@ const admin = __importStar(require("firebase-admin"));
 const normalization_1 = require("./normalization");
 const alerts_1 = require("./alerts");
 const gemini_1 = require("./gemini");
+const notifications_1 = require("./notifications");
+const email_1 = require("./email");
 admin.initializeApp();
 // ===== Data Deletion Functions =====
 /**
@@ -268,6 +270,48 @@ exports.onDailyLogCreated = (0, firestore_1.onDocumentCreated)("students/{studen
             stressLevel,
             failureProbability,
         });
+        // 9. Send notification to student about their latest prediction
+        await (0, notifications_1.createNotification)({
+            userId: studentId,
+            type: "new_prediction",
+            title: `Risk Assessment: ${riskLevel}`,
+            message: `Your latest analysis shows ${Math.round(stressLevel * 100)}% stress level. ${suggestions[0] || ""}`,
+            link: "/dashboard/student/suggestions",
+            metadata: { riskLevel, stressLevel, failureProbability },
+        });
+        // 10. Detect stress trend and proactively alert teachers
+        const isTrending = await (0, notifications_1.detectStressTrend)(studentId);
+        if (isTrending && studentName) {
+            const department = profileSnap.exists ? profileSnap.data().department : null;
+            if (department) {
+                // In-app notifications
+                await (0, notifications_1.notifyDepartmentTeachers)(department, {
+                    type: "stress_trend",
+                    title: `📈 Stress Trending Up: ${studentName}`,
+                    message: `${studentName}'s stress has been increasing over the last 3+ assessments. Current: ${Math.round(stressLevel * 100)}%. Consider reaching out.`,
+                    link: `/dashboard/teacher/student/${studentId}`,
+                    metadata: { studentId, stressLevel, riskLevel },
+                });
+                // Email alerts to department teachers
+                const teacherQuery = await db.collection("users").where("role", "==", "teacher").get();
+                for (const tDoc of teacherQuery.docs) {
+                    const tProfileSnap = await db.doc(`teachers/${tDoc.id}`).get();
+                    if (tProfileSnap.exists && tProfileSnap.data().department === department) {
+                        const tUser = tDoc.data();
+                        if (tUser.email) {
+                            (0, email_1.sendStressTrendEmail)({
+                                teacherEmail: tUser.email,
+                                teacherName: tUser.name || "Teacher",
+                                studentName,
+                                stressLevel: Math.round(stressLevel * 100),
+                                appUrl: `https://prism-app.vercel.app/dashboard/teacher/student/${studentId}`,
+                            }).catch(() => { });
+                        }
+                    }
+                }
+            }
+            firebase_functions_1.logger.info(`Stress trend detected for student ${studentId}`);
+        }
         firebase_functions_1.logger.info(`Prediction completed for student ${studentId}`, { riskLevel, modelUsed });
     }
     catch (error) {
@@ -406,4 +450,53 @@ function generateExplanation(features, scores) {
     }
     return `Risk assessed as ${scores.riskLevel} based on ${factors.join(", ")}. Stress at ${Math.round(scores.stressLevel * 100)}%, failure probability at ${Math.round(scores.failureProbability * 100)}%.`;
 }
+/**
+ * Trigger: When a teacher creates an intervention for a student.
+ * Notifies the student that their mentor took action.
+ */
+exports.onInterventionCreated = (0, firestore_1.onDocumentCreated)("interventions/{interventionId}", async (event) => {
+    var _a;
+    const snap = event.data;
+    if (!snap)
+        return;
+    const data = snap.data();
+    const studentId = data.studentId;
+    const teacherName = data.teacherName || "Your mentor";
+    const actionLabel = data.actionTaken || data.actionType || "an action";
+    try {
+        // In-app notification to student
+        await (0, notifications_1.createNotification)({
+            userId: studentId,
+            type: "mentor_action",
+            title: `🎯 Mentor Action: ${actionLabel}`,
+            message: `${teacherName} has recorded an intervention for you: "${((_a = data.notes) === null || _a === void 0 ? void 0 : _a.substring(0, 100)) || actionLabel}"`,
+            link: "/dashboard/student",
+            metadata: {
+                teacherName,
+                actionType: data.actionType,
+                interventionId: event.params.interventionId,
+            },
+        });
+        // Email notification to student
+        const db = admin.firestore();
+        const studentUser = await db.doc(`users/${studentId}`).get();
+        if (studentUser.exists) {
+            const studentData = studentUser.data();
+            if (studentData.email) {
+                await (0, email_1.sendMentorActionEmail)({
+                    studentEmail: studentData.email,
+                    studentName: studentData.name || "Student",
+                    teacherName,
+                    actionType: actionLabel,
+                    notes: data.notes || "No additional notes.",
+                    appUrl: "https://prism-app.vercel.app/dashboard/student",
+                });
+            }
+        }
+        firebase_functions_1.logger.info(`Student ${studentId} notified of mentor action by ${teacherName}`);
+    }
+    catch (error) {
+        firebase_functions_1.logger.error(`Error notifying student of intervention:`, error);
+    }
+});
 //# sourceMappingURL=index.js.map

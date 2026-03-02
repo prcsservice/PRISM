@@ -78,7 +78,7 @@ export default function TeacherStudentsPage() {
             <DataTable
                 data={filteredStudents}
                 columns={columns}
-                rowHref={(s) => `/dashboard/teacher/students/${s.studentId}`}
+                rowHref={(s) => `/dashboard/teacher/student/${s.studentId}`}
                 emptyMessage={search ? "No students matching search." : "No students found in your department."}
             />
         </div>

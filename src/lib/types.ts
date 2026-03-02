@@ -116,4 +116,52 @@ export interface Intervention {
     date: Timestamp;
     notes: string;
     actionTaken: string;
+    actionType?: MentorActionType;
+    status?: "planned" | "in_progress" | "completed";
+    followUpDate?: Timestamp;
+    outcome?: "improved" | "no_change" | "worsened" | "pending";
+}
+
+// ===== Mentor Action System =====
+export type MentorActionType =
+    | "called_student"
+    | "scheduled_meeting"
+    | "referred_counselor"
+    | "contacted_parent"
+    | "academic_support"
+    | "peer_mentoring"
+    | "sent_encouragement"
+    | "custom";
+
+export const MENTOR_ACTION_LABELS: Record<MentorActionType, string> = {
+    called_student: "Called Student",
+    scheduled_meeting: "Scheduled Meeting",
+    referred_counselor: "Referred to Counselor",
+    contacted_parent: "Contacted Parent",
+    academic_support: "Academic Support Plan",
+    peer_mentoring: "Peer Mentoring Assigned",
+    sent_encouragement: "Sent Encouragement",
+    custom: "Other Action",
+};
+
+// ===== Notification System =====
+export type NotificationType =
+    | "risk_change"
+    | "new_prediction"
+    | "mentor_action"
+    | "alert_created"
+    | "log_reminder"
+    | "stress_trend"
+    | "ai_suggestion";
+
+export interface AppNotification {
+    id?: string;
+    userId: string;
+    type: NotificationType;
+    title: string;
+    message: string;
+    read: boolean;
+    createdAt: Timestamp;
+    link?: string; // Optional navigation link
+    metadata?: Record<string, any>;
 }

@@ -35,6 +35,8 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.checkAndCreateAlert = checkAndCreateAlert;
 const admin = __importStar(require("firebase-admin"));
+const notifications_1 = require("./notifications");
+const email_1 = require("./email");
 async function checkAndCreateAlert(data) {
     const db = admin.firestore();
     // Only create alerts for Moderate or High risk
@@ -57,7 +59,14 @@ async function checkAndCreateAlert(data) {
         });
         return existingDoc.id;
     }
-    // Create new alert
+    // Generate AI-suggested mentor actions
+    const mentorSuggestions = (0, notifications_1.generateMentorSuggestions)({
+        riskLevel: data.riskLevel,
+        stressLevel: data.stressLevel,
+        failureProbability: data.failureProbability,
+        studentName: data.studentName,
+    });
+    // Create new alert with AI suggestions
     const priority = data.riskLevel === "High" ? "Critical" : "Warning";
     const reason = buildReason(data);
     const ref = await db.collection("alerts").add({
@@ -70,7 +79,40 @@ async function checkAndCreateAlert(data) {
         status: "new",
         timestamp: admin.firestore.FieldValue.serverTimestamp(),
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        suggestedActions: mentorSuggestions,
     });
+    // Notify teachers in the same department
+    const profileSnap = await db.doc(`students/${data.studentId}/profile/main`).get();
+    const department = profileSnap.exists ? profileSnap.data().department : null;
+    if (department) {
+        // In-app notifications
+        await (0, notifications_1.notifyDepartmentTeachers)(department, {
+            type: "alert_created",
+            title: `⚠️ ${priority} Alert: ${data.studentName}`,
+            message: reason,
+            link: `/dashboard/teacher/student/${data.studentId}`,
+            metadata: { studentId: data.studentId, riskLevel: data.riskLevel, suggestedActions: mentorSuggestions },
+        });
+        // Email alerts to teachers
+        const teacherQuery = await db.collection("users").where("role", "==", "teacher").get();
+        for (const teacherDoc of teacherQuery.docs) {
+            const tProfileSnap = await db.doc(`teachers/${teacherDoc.id}`).get();
+            if (tProfileSnap.exists && tProfileSnap.data().department === department) {
+                const teacherUser = teacherDoc.data();
+                if (teacherUser.email) {
+                    (0, email_1.sendAlertEmail)({
+                        teacherEmail: teacherUser.email,
+                        teacherName: teacherUser.name || "Teacher",
+                        studentName: data.studentName,
+                        riskLevel: data.riskLevel,
+                        reason,
+                        suggestedActions: mentorSuggestions,
+                        appUrl: `https://prism-app.vercel.app/dashboard/teacher/student/${data.studentId}`,
+                    }).catch(() => { });
+                }
+            }
+        }
+    }
     return ref.id;
 }
 function buildReason(data) {

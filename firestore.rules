@@ -26,7 +26,8 @@ service cloud.firestore {
 
     // === Users Collection ===
     match /users/{userId} {
-      allow read: if isOwner(userId);
+      // Users can read their own data; teachers can read all users (for student discovery)
+      allow read: if isOwner(userId) || isTeacher();
       allow create: if isOwner(userId);
       // Users can update their own doc (onboarding, deletion request, etc.)
       allow update: if isOwner(userId)
@@ -43,6 +44,12 @@ service cloud.firestore {
         allow read: if isOwner(studentId) || isTeacher();
         allow create: if isOwner(studentId) && isStudent();
         allow update: if isOwner(studentId) && isStudent();
+      }
+
+      // Legacy profile path (migration support)
+      match /profile/data {
+        allow read: if isOwner(studentId) || isTeacher();
+        allow write: if isOwner(studentId) && isStudent();
       }
 
       // Academic Data (teacher-writable, student-readable)
@@ -101,20 +108,31 @@ service cloud.firestore {
       allow read: if isTeacher();
       // Only Cloud Functions create alerts
       allow create: if false;
-      // Teachers can resolve alerts (must set themselves as resolver)
-      allow update: if isTeacher()
-        && request.resource.data.resolved == true
-        && request.resource.data.resolvedBy == request.auth.uid;
+      // Teachers can update alert status and actions
+      allow update: if isTeacher();
       allow delete: if false;
     }
 
     // === Interventions ===
     match /interventions/{noteId} {
-      allow read: if isTeacher();
+      // Both teachers and students can read (students see mentor actions)
+      allow read: if isAuth();
       allow create: if isTeacher()
         && request.resource.data.teacherId == request.auth.uid
         && request.resource.data.studentId is string;
-      allow update, delete: if false;
+      allow update: if isTeacher()
+        && resource.data.teacherId == request.auth.uid;
+      allow delete: if false;
+    }
+
+    // === Notifications ===
+    match /notifications/{notifId} {
+      // Users can read and update (mark read) their own notifications
+      allow read: if isAuth() && resource.data.userId == request.auth.uid;
+      allow update: if isAuth() && resource.data.userId == request.auth.uid;
+      // Only Cloud Functions create notifications
+      allow create: if false;
+      allow delete: if false;
     }
   }
 }

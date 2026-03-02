@@ -37,14 +37,14 @@
 /* ===== Light Theme (Default) ===== */
 :root,
 [data-theme="light"] {
-  --bg-primary: #FFFFFF; /* white */
+  --bg-primary: #F4F4F4; /* white */
   --bg-secondary: #F3F4F6; /* gray-100 */
   --bg-tertiary: #E5E7EB; /* gray-200 */
   --bg-hover: #D1D5DB; /* gray-300 */
   
   --accent: #A3E635; /* Same vibrance */
   
-  --text-primary: #111827; /* gray-900 */
+  --text-primary: #201D1D; /* gray-900 */
   --text-secondary: #4B5563; /* gray-600 */
   --text-muted: #6B7280; /* gray-500 */
   
@@ -55,9 +55,9 @@
 
 /* ===== Dark Theme ===== */
 [data-theme="dark"] {
-  --bg-primary: #000000;
-  --bg-secondary: #0A0A0A;
-  --bg-tertiary: #141414;
+  --bg-primary: #201D1D;
+  --bg-secondary: #1f1d1d;
+  --bg-tertiary: #0f0d0d;
   --bg-hover: #1A1A1A;
   
   --accent: #A1FF62;
@@ -66,7 +66,7 @@
   --text-secondary: #A0A0A0;
   --text-muted: #6B6B6B;
   
-  --border-primary: #1F1F1F;
+  --border-primary: #303030;
   --border-secondary: #2A2A2A;
   --border-hover: #333333;
 }
@@ -119,7 +119,7 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--border-color);
+  background: var(--border-primary);
   border-radius: 3px;
 }
 

@@ -6,11 +6,49 @@ import { useStudentData } from "@/hooks/useStudentData";
 import { useTheme } from "@/context/ThemeContext";
 import { updateStudentProfile, requestDataDeletion } from "@/lib/firestore";
 import Input from "@/components/ui/Input";
+import Select from "@/components/ui/Select";
 import Button from "@/components/ui/Button";
 import Toggle from "@/components/ui/Toggle";
 import Modal from "@/components/ui/Modal";
 import Skeleton from "@/components/ui/Skeleton";
 import { Save, Trash2, Moon, Sun, CheckCircle } from "lucide-react";
+
+// Same dropdown options as onboarding
+const DEPARTMENTS = [
+    { value: "", label: "Select Department" },
+    { value: "Computer Science & Engineering", label: "Computer Science & Engineering" },
+    { value: "Information Technology", label: "Information Technology" },
+    { value: "Electronics & Communication", label: "Electronics & Communication" },
+    { value: "Electrical & Electronics", label: "Electrical & Electronics" },
+    { value: "Mechanical Engineering", label: "Mechanical Engineering" },
+    { value: "Civil Engineering", label: "Civil Engineering" },
+    { value: "Artificial Intelligence & ML", label: "Artificial Intelligence & ML" },
+    { value: "Data Science", label: "Data Science" },
+    { value: "Biomedical Engineering", label: "Biomedical Engineering" },
+    { value: "Chemical Engineering", label: "Chemical Engineering" },
+    { value: "Aerospace Engineering", label: "Aerospace Engineering" },
+    { value: "Business Administration", label: "Business Administration" },
+    { value: "Other", label: "Other" },
+];
+
+const YEARS = [
+    { value: "", label: "Select Year" },
+    { value: "1", label: "1st Year" },
+    { value: "2", label: "2nd Year" },
+    { value: "3", label: "3rd Year" },
+    { value: "4", label: "4th Year" },
+    { value: "5", label: "5th Year (Integrated)" },
+];
+
+const SECTIONS = [
+    { value: "", label: "Select Section" },
+    { value: "A", label: "Section A" },
+    { value: "B", label: "Section B" },
+    { value: "C", label: "Section C" },
+    { value: "D", label: "Section D" },
+    { value: "E", label: "Section E" },
+    { value: "F", label: "Section F" },
+];
 
 export default function StudentSettingsPage() {
     const { user } = useAuth();
@@ -24,6 +62,7 @@ export default function StudentSettingsPage() {
     const [year, setYear] = useState("");
     const [saving, setSaving] = useState(false);
     const [saved, setSaved] = useState(false);
+    const [errors, setErrors] = useState<Record<string, string>>({});
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [deleting, setDeleting] = useState(false);
     const [deletionRequested, setDeletionRequested] = useState(false);
@@ -38,18 +77,31 @@ export default function StudentSettingsPage() {
         }
     }, [profile]);
 
+    const validate = (): boolean => {
+        const errs: Record<string, string> = {};
+        if (!name.trim()) errs.name = "Name is required";
+        else if (name.trim().length < 2) errs.name = "Name must be at least 2 characters";
+        if (!rollNo.trim()) errs.rollNo = "Roll number is required";
+        if (!department) errs.department = "Please select a department";
+        if (!section) errs.section = "Please select a section";
+        if (!year) errs.year = "Please select your year";
+        setErrors(errs);
+        return Object.keys(errs).length === 0;
+    };
+
     const handleSave = async () => {
-        if (!user) return;
+        if (!user || !validate()) return;
         setSaving(true);
         try {
             await updateStudentProfile(user.uid, {
-                name,
-                rollNo,
+                name: name.trim(),
+                rollNo: rollNo.trim(),
                 department,
                 section,
                 year: Number(year),
             });
             setSaved(true);
+            setErrors({});
             setTimeout(() => setSaved(false), 3000);
         } catch (err) {
             console.error("Error saving profile:", err);
@@ -94,15 +146,49 @@ export default function StudentSettingsPage() {
             <div className="bg-bg-secondary border border-border-primary rounded-xl p-6 md:p-8 space-y-5">
                 <h3 className="text-lg font-semibold text-text-primary">Profile Information</h3>
 
-                <Input label="Full Name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Your full name" />
-                <Input label="Roll Number" value={rollNo} onChange={(e) => setRollNo(e.target.value)} placeholder="e.g. 21CS101" />
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <Input label="Department" value={department} onChange={(e) => setDepartment(e.target.value)} placeholder="e.g. Computer Science" />
-                    <Input label="Section" value={section} onChange={(e) => setSection(e.target.value)} placeholder="e.g. A" />
+                <div>
+                    <Input label="Full Name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Enter your full name" />
+                    {errors.name && <p className="text-xs text-red-500 mt-1">{errors.name}</p>}
                 </div>
 
-                <Input label="Year" type="number" value={year} onChange={(e) => setYear(e.target.value)} placeholder="e.g. 3" />
+                <div>
+                    <Input label="Roll Number" value={rollNo} onChange={(e) => setRollNo(e.target.value)} placeholder="e.g. 21CS001" />
+                    {errors.rollNo && <p className="text-xs text-red-500 mt-1">{errors.rollNo}</p>}
+                </div>
+
+                <div>
+                    <Select
+                        label="Department"
+                        name="department"
+                        value={department}
+                        onChange={(e) => { setDepartment(e.target.value); setErrors(prev => ({ ...prev, department: "" })); }}
+                        options={DEPARTMENTS}
+                    />
+                    {errors.department && <p className="text-xs text-red-500 mt-1">{errors.department}</p>}
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <Select
+                            label="Section"
+                            name="section"
+                            value={section}
+                            onChange={(e) => { setSection(e.target.value); setErrors(prev => ({ ...prev, section: "" })); }}
+                            options={SECTIONS}
+                        />
+                        {errors.section && <p className="text-xs text-red-500 mt-1">{errors.section}</p>}
+                    </div>
+                    <div>
+                        <Select
+                            label="Year of Study"
+                            name="year"
+                            value={year}
+                            onChange={(e) => { setYear(e.target.value); setErrors(prev => ({ ...prev, year: "" })); }}
+                            options={YEARS}
+                        />
+                        {errors.year && <p className="text-xs text-red-500 mt-1">{errors.year}</p>}
+                    </div>
+                </div>
 
                 <div className="flex items-center gap-3 pt-2">
                     <Button onClick={handleSave} disabled={saving} className="flex items-center gap-2">

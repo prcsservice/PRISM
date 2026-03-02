@@ -114,7 +114,7 @@ export default function TeacherDashboard() {
                     <DataTable
                         data={atRiskStudents}
                         columns={columns}
-                        rowHref={(s) => `/dashboard/teacher/students/${s.studentId}`}
+                        rowHref={(s) => `/dashboard/teacher/student/${s.studentId}`}
                         emptyMessage="No high-risk students currently identified."
                     />
                 </div>
@@ -122,10 +122,10 @@ export default function TeacherDashboard() {
                 <div className="flex flex-col gap-4">
                     <h3 className="font-semibold text-text-primary">Recent Alerts Feed</h3>
                     <div className="flex-1 bg-bg-secondary border border-border-primary rounded-xl flex flex-col p-4 gap-3 overflow-hidden">
-                        {alerts.filter(a => !a.resolved).slice(0, 4).map(alert => {
+                        {alerts.filter(a => !a.resolved).slice(0, 4).map((alert, index) => {
                             const student = students.find(s => s.studentId === alert.studentId);
                             return (
-                                <div key={alert.alertId} className="p-3 border border-border-primary hover:border-border-hover transition-colors rounded-lg bg-bg-tertiary">
+                                <div key={alert.id || index} className="p-3 border border-border-primary hover:border-border-hover transition-colors rounded-lg bg-bg-tertiary">
                                     <div className="flex justify-between items-start mb-2">
                                         <span className="text-sm font-medium text-text-primary">{student?.name || "Unknown Student"}</span>
                                         <RiskBadge variant={(alert.riskLevel || "default").toLowerCase() as any} className="capitalize text-[10px] px-1.5 py-0">{alert.riskLevel}</RiskBadge>

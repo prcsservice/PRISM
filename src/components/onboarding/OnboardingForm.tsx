@@ -12,72 +12,183 @@ import Select from "@/components/ui/Select";
 import ProgressBar from "./ProgressBar";
 import ConsentCheckbox from "./ConsentCheckbox";
 
+// ===== Dropdown Options =====
+
+const DEPARTMENTS = [
+    { value: "", label: "Select Department" },
+    { value: "Computer Science & Engineering", label: "Computer Science & Engineering" },
+    { value: "Information Technology", label: "Information Technology" },
+    { value: "Electronics & Communication", label: "Electronics & Communication" },
+    { value: "Electrical & Electronics", label: "Electrical & Electronics" },
+    { value: "Mechanical Engineering", label: "Mechanical Engineering" },
+    { value: "Civil Engineering", label: "Civil Engineering" },
+    { value: "Artificial Intelligence & ML", label: "Artificial Intelligence & ML" },
+    { value: "Data Science", label: "Data Science" },
+    { value: "Biomedical Engineering", label: "Biomedical Engineering" },
+    { value: "Chemical Engineering", label: "Chemical Engineering" },
+    { value: "Aerospace Engineering", label: "Aerospace Engineering" },
+    { value: "Business Administration", label: "Business Administration" },
+    { value: "Other", label: "Other" },
+];
+
+const YEARS = [
+    { value: "", label: "Select Year" },
+    { value: "1", label: "1st Year" },
+    { value: "2", label: "2nd Year" },
+    { value: "3", label: "3rd Year" },
+    { value: "4", label: "4th Year" },
+    { value: "5", label: "5th Year (Integrated)" },
+];
+
+const SECTIONS = [
+    { value: "", label: "Select Section" },
+    { value: "A", label: "Section A" },
+    { value: "B", label: "Section B" },
+    { value: "C", label: "Section C" },
+    { value: "D", label: "Section D" },
+    { value: "E", label: "Section E" },
+    { value: "F", label: "Section F" },
+];
+
+const INSTITUTIONS = [
+    { value: "", label: "Select Institution" },
+    { value: "SRM Institute of Science and Technology", label: "SRM Institute of Science and Technology" },
+    { value: "VIT Vellore", label: "VIT Vellore" },
+    { value: "Anna University", label: "Anna University" },
+    { value: "IIT Madras", label: "IIT Madras" },
+    { value: "NIT Trichy", label: "NIT Trichy" },
+    { value: "Amrita Vishwa Vidyapeetham", label: "Amrita Vishwa Vidyapeetham" },
+    { value: "PSG College of Technology", label: "PSG College of Technology" },
+    { value: "SASTRA University", label: "SASTRA University" },
+    { value: "Manipal Institute of Technology", label: "Manipal Institute of Technology" },
+    { value: "BITS Pilani", label: "BITS Pilani" },
+    { value: "Other", label: "Other" },
+];
+
+// ===== Validation =====
+
+interface FormErrors {
+    name?: string;
+    rollNo?: string;
+    department?: string;
+    section?: string;
+    year?: string;
+    institution?: string;
+    subjectsFocus?: string;
+}
+
+function validateStep1Student(data: { name: string; rollNo: string }): FormErrors {
+    const errors: FormErrors = {};
+    if (!data.name.trim()) errors.name = "Full name is required";
+    else if (data.name.trim().length < 2) errors.name = "Name must be at least 2 characters";
+    if (!data.rollNo.trim()) errors.rollNo = "Roll number is required";
+    else if (data.rollNo.trim().length < 3) errors.rollNo = "Enter a valid roll number";
+    return errors;
+}
+
+function validateStep1Teacher(data: { name: string; department: string }): FormErrors {
+    const errors: FormErrors = {};
+    if (!data.name.trim()) errors.name = "Full name is required";
+    else if (data.name.trim().length < 2) errors.name = "Name must be at least 2 characters";
+    if (!data.department) errors.department = "Please select a department";
+    return errors;
+}
+
+function validateStep2Student(data: { department: string; section: string; year: string }): FormErrors {
+    const errors: FormErrors = {};
+    if (!data.department) errors.department = "Please select a department";
+    if (!data.section) errors.section = "Please select a section";
+    if (!data.year) errors.year = "Please select your year of study";
+    return errors;
+}
+
+function validateStep2Teacher(data: { institution: string; subjectsFocus: string }): FormErrors {
+    const errors: FormErrors = {};
+    if (!data.institution) errors.institution = "Please select an institution";
+    if (!data.subjectsFocus.trim()) errors.subjectsFocus = "Enter at least one subject";
+    return errors;
+}
+
+// ===== Component =====
+
 export default function OnboardingForm() {
     const { user, userData } = useAuth();
     const router = useRouter();
     const [step, setStep] = useState(1);
     const [loading, setLoading] = useState(false);
-    const [error, setError] = useState("");
+    const [errors, setErrors] = useState<FormErrors>({});
 
     const isStudent = userData?.role === "student";
     const totalSteps = isStudent ? 3 : 2;
 
-    // Form State
     const [formData, setFormData] = useState({
         name: userData?.name || "",
         rollNo: "",
         department: "",
         section: "",
         year: "",
-        // Teacher specific
         institution: "",
         subjectsFocus: "",
-        // Consent
         consentGiven: false,
     });
 
     const updateForm = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-        setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+        const { name, value } = e.target;
+        setFormData((prev) => ({ ...prev, [name]: value }));
+        // Clear error for this field when user types
+        if (errors[name as keyof FormErrors]) {
+            setErrors((prev) => ({ ...prev, [name]: undefined }));
+        }
     };
 
     const handleNext = () => {
-        setError("");
+        let validationErrors: FormErrors = {};
+
         if (step === 1) {
-            if (!formData.name) return setError("Name is required");
-            if (isStudent && !formData.rollNo) return setError("Roll Number is required");
+            validationErrors = isStudent
+                ? validateStep1Student(formData)
+                : validateStep1Teacher(formData);
         }
         if (step === 2 && isStudent) {
-            if (!formData.department || !formData.section || !formData.year) {
-                return setError("Please fill all academic details");
-            }
+            validationErrors = validateStep2Student(formData);
         }
+        if (step === 2 && !isStudent) {
+            validationErrors = validateStep2Teacher(formData);
+        }
+
+        if (Object.keys(validationErrors).length > 0) {
+            setErrors(validationErrors);
+            return;
+        }
+
+        setErrors({});
         setStep((prev) => prev + 1);
     };
 
     const handleBack = () => {
         setStep((prev) => prev - 1);
-        setError("");
+        setErrors({});
     };
 
     const handleSubmit = async () => {
         if (isStudent && !formData.consentGiven) {
-            return setError("You must provide consent to proceed.");
+            setErrors({ name: "You must provide consent to proceed." });
+            return;
         }
 
         try {
             setLoading(true);
-            setError("");
+            setErrors({});
 
             if (!user) throw new Error("No user found");
 
             if (isStudent) {
-                // Create student profile
-                const profileRef = doc(db, "students", user.uid, "profile", "data");
+                const profileRef = doc(db, "students", user.uid, "profile", "main");
                 await setDoc(profileRef, {
                     studentId: user.uid,
-                    name: formData.name,
+                    name: formData.name.trim(),
                     email: user.email,
-                    rollNo: formData.rollNo,
+                    rollNo: formData.rollNo.trim(),
                     department: formData.department,
                     section: formData.section,
                     year: parseInt(formData.year),
@@ -87,31 +198,27 @@ export default function OnboardingForm() {
                     updatedAt: serverTimestamp(),
                 });
             } else {
-                // Create teacher profile
                 const teacherRef = doc(db, "teachers", user.uid);
                 await setDoc(teacherRef, {
                     teacherId: user.uid,
-                    name: formData.name,
+                    name: formData.name.trim(),
                     email: user.email,
                     department: formData.department,
                     institution: formData.institution,
-                    subjectsFocus: formData.subjectsFocus.split(",").map(s => s.trim()),
+                    subjectsFocus: formData.subjectsFocus.split(",").map(s => s.trim()).filter(Boolean),
                     createdAt: serverTimestamp(),
                 });
             }
 
-            // Mark onboarding as complete on the base user doc
             await updateDoc(doc(db, "users", user.uid), {
-                name: formData.name, // Update in case they changed it
+                name: formData.name.trim(),
                 onboardingCompleted: true,
             });
 
-            // Navigate to respective dashboard
             window.location.href = isStudent ? "/dashboard/student" : "/dashboard/teacher";
-
         } catch (err: any) {
             console.error(err);
-            setError(err.message || "Failed to save profile");
+            setErrors({ name: err.message || "Failed to save profile" });
             setLoading(false);
         }
     };
@@ -133,6 +240,12 @@ export default function OnboardingForm() {
         }),
     };
 
+    // Inline error display helper
+    const fieldError = (field: keyof FormErrors) =>
+        errors[field] ? (
+            <p className="text-xs text-red-500 mt-1">{errors[field]}</p>
+        ) : null;
+
     return (
         <div className="w-full max-w-lg mx-auto bg-bg-secondary border border-border-primary rounded-[16px] p-8 md:p-10 shadow-2xl relative overflow-hidden">
             {/* Decorative accent blob */}
@@ -146,19 +259,21 @@ export default function OnboardingForm() {
                     {isStudent ? "Student Onboarding" : "Faculty Setup"}
                 </h2>
                 <p className="text-text-secondary text-sm mb-6">
-                    Complete your profile to access your personalized dashbaord.
+                    Complete your profile to access your personalized dashboard.
                 </p>
                 <ProgressBar currentStep={step} totalSteps={totalSteps} />
             </div>
 
-            {error && (
+            {/* Global error (e.g. from submit failures) */}
+            {errors.name && step === (isStudent ? 3 : 2) && !isStudent && (
                 <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-md">
-                    <p className="text-sm text-red-500">{error}</p>
+                    <p className="text-sm text-red-500">{errors.name}</p>
                 </div>
             )}
 
             <div className="relative min-h-[300px]">
                 <AnimatePresence mode="wait" custom={1}>
+                    {/* ===== STEP 1: Basic Details ===== */}
                     {step === 1 && (
                         <motion.div
                             key="step1"
@@ -169,34 +284,44 @@ export default function OnboardingForm() {
                             transition={{ duration: 0.3 }}
                             className="space-y-5"
                         >
-                            <Input
-                                label="Full Name"
-                                name="name"
-                                value={formData.name}
-                                onChange={updateForm}
-                                placeholder="John Doe"
-                            />
-                            {isStudent && (
+                            <div>
                                 <Input
-                                    label="Roll Number / Student ID"
-                                    name="rollNo"
-                                    value={formData.rollNo}
+                                    label="Full Name"
+                                    name="name"
+                                    value={formData.name}
                                     onChange={updateForm}
-                                    placeholder="e.g. 21CS001"
+                                    placeholder="Enter your full name"
                                 />
-                            )}
-                            {!isStudent && (
-                                <Input
-                                    label="Department"
-                                    name="department"
-                                    value={formData.department}
-                                    onChange={updateForm}
-                                    placeholder="e.g. Computer Science"
-                                />
+                                {fieldError("name")}
+                            </div>
+
+                            {isStudent ? (
+                                <div>
+                                    <Input
+                                        label="Roll Number / Student ID"
+                                        name="rollNo"
+                                        value={formData.rollNo}
+                                        onChange={updateForm}
+                                        placeholder="e.g. 21CS001"
+                                    />
+                                    {fieldError("rollNo")}
+                                </div>
+                            ) : (
+                                <div>
+                                    <Select
+                                        label="Department"
+                                        name="department"
+                                        value={formData.department}
+                                        onChange={(e) => updateForm(e as any)}
+                                        options={DEPARTMENTS}
+                                    />
+                                    {fieldError("department")}
+                                </div>
                             )}
                         </motion.div>
                     )}
 
+                    {/* ===== STEP 2 (Student): Academic Details ===== */}
                     {step === 2 && isStudent && (
                         <motion.div
                             key="step2-student"
@@ -207,38 +332,43 @@ export default function OnboardingForm() {
                             transition={{ duration: 0.3 }}
                             className="space-y-5"
                         >
-                            <Input
-                                label="Department"
-                                name="department"
-                                value={formData.department}
-                                onChange={updateForm}
-                                placeholder="e.g. Computer Science"
-                            />
-                            <div className="grid grid-cols-2 gap-4">
-                                <Input
-                                    label="Section/Class"
-                                    name="section"
-                                    value={formData.section}
-                                    onChange={updateForm}
-                                    placeholder="e.g. CSE-A"
-                                />
+                            <div>
                                 <Select
-                                    label="Year of Study"
-                                    name="year"
-                                    value={formData.year}
+                                    label="Department"
+                                    name="department"
+                                    value={formData.department}
                                     onChange={(e) => updateForm(e as any)}
-                                    options={[
-                                        { value: "", label: "Select Year" },
-                                        { value: "1", label: "1st Year" },
-                                        { value: "2", label: "2nd Year" },
-                                        { value: "3", label: "3rd Year" },
-                                        { value: "4", label: "4th Year" },
-                                    ]}
+                                    options={DEPARTMENTS}
                                 />
+                                {fieldError("department")}
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <Select
+                                        label="Section"
+                                        name="section"
+                                        value={formData.section}
+                                        onChange={(e) => updateForm(e as any)}
+                                        options={SECTIONS}
+                                    />
+                                    {fieldError("section")}
+                                </div>
+                                <div>
+                                    <Select
+                                        label="Year of Study"
+                                        name="year"
+                                        value={formData.year}
+                                        onChange={(e) => updateForm(e as any)}
+                                        options={YEARS}
+                                    />
+                                    {fieldError("year")}
+                                </div>
                             </div>
                         </motion.div>
                     )}
 
+                    {/* ===== STEP 2 (Teacher): Institution Details ===== */}
                     {step === 2 && !isStudent && (
                         <motion.div
                             key="step2-teacher"
@@ -249,23 +379,30 @@ export default function OnboardingForm() {
                             transition={{ duration: 0.3 }}
                             className="space-y-5"
                         >
-                            <Input
-                                label="Institution Name"
-                                name="institution"
-                                value={formData.institution}
-                                onChange={updateForm}
-                                placeholder="e.g. Global Tech University"
-                            />
-                            <Input
-                                label="Subjects Focus (Comma separated)"
-                                name="subjectsFocus"
-                                value={formData.subjectsFocus}
-                                onChange={updateForm}
-                                placeholder="e.g. Data Structures, Algorithms"
-                            />
+                            <div>
+                                <Select
+                                    label="Institution"
+                                    name="institution"
+                                    value={formData.institution}
+                                    onChange={(e) => updateForm(e as any)}
+                                    options={INSTITUTIONS}
+                                />
+                                {fieldError("institution")}
+                            </div>
+                            <div>
+                                <Input
+                                    label="Subjects / Focus Areas (comma separated)"
+                                    name="subjectsFocus"
+                                    value={formData.subjectsFocus}
+                                    onChange={updateForm}
+                                    placeholder="e.g. Data Structures, Algorithms, Machine Learning"
+                                />
+                                {fieldError("subjectsFocus")}
+                            </div>
                         </motion.div>
                     )}
 
+                    {/* ===== STEP 3 (Student): Consent ===== */}
                     {step === 3 && isStudent && (
                         <motion.div
                             key="step3-student"

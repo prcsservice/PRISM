@@ -1,7 +1,7 @@
 "use client";
 
 import { ReactNode, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import Sidebar from "@/components/dashboard/Sidebar";
 import TopNavbar from "@/components/dashboard/TopNavbar";
@@ -9,6 +9,7 @@ import TopNavbar from "@/components/dashboard/TopNavbar";
 export default function DashboardLayout({ children }: { children: ReactNode }) {
     const { user, loading, userData } = useAuth();
     const router = useRouter();
+    const pathname = usePathname();
 
     // Route Protection & Role Verification
     useEffect(() => {
@@ -23,7 +24,20 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             router.push("/onboarding");
             return;
         }
-    }, [user, loading, userData, router]);
+
+        // Role-based route guard: prevent cross-role access
+        const isOnStudentRoute = pathname.startsWith("/dashboard/student");
+        const isOnTeacherRoute = pathname.startsWith("/dashboard/teacher");
+
+        if (userData.role === "student" && isOnTeacherRoute) {
+            router.push("/dashboard/student");
+            return;
+        }
+        if (userData.role === "teacher" && isOnStudentRoute) {
+            router.push("/dashboard/teacher");
+            return;
+        }
+    }, [user, loading, userData, router, pathname]);
 
     if (loading || !user || !userData || !userData.onboardingCompleted) {
         return (
