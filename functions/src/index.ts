@@ -334,7 +334,7 @@ export const onDailyLogCreated = onDocumentCreated(
                                     teacherName: tUser.name || "Teacher",
                                     studentName,
                                     stressLevel: Math.round(stressLevel * 100),
-                                    appUrl: `${process.env.APP_URL || 'https://prism-app.vercel.app'}/dashboard/teacher/student/${studentId}`,
+                                    appUrl: `${process.env.APP_URL || 'https://prism-xi-ashen.vercel.app'}/dashboard/teacher/student/${studentId}`,
                                 }).catch(() => { });
                             }
                         }
@@ -487,7 +487,7 @@ export const onInterventionCreated = onDocumentCreated(
                         teacherName,
                         actionType: actionLabel,
                         notes: data.notes || "No additional notes.",
-                        appUrl: `${process.env.APP_URL || 'https://prism-app.vercel.app'}/dashboard/student`,
+                        appUrl: `${process.env.APP_URL || 'https://prism-xi-ashen.vercel.app'}/dashboard/student`,
                     });
                 }
             }

@@ -7,11 +7,11 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 
 const NAV_LINKS = [
-    { label: "Home", href: "#hero" },
-    { label: "Features", href: "#solution" },
-    { label: "How It Works", href: "#how-it-works" },
-    { label: "Security", href: "#security" },
-    { label: "FAQ", href: "#faq" },
+    { label: "Home", href: "/" },
+    { label: "Features", href: "/features" },
+    { label: "How It Works", href: "/how-it-works" },
+    { label: "Security", href: "/security" },
+    { label: "FAQ", href: "/faq" },
 ];
 
 export default function Navbar() {
@@ -129,13 +129,13 @@ export default function Navbar() {
                                             animate={{ opacity: 1, x: 0 }}
                                             transition={{ delay: i * 0.05 + 0.2 }}
                                         >
-                                            <a
+                                            <Link
                                                 href={link.href}
                                                 className="text-3xl md:text-5xl font-medium hover:text-[#A3E635] transition-colors py-2 md:py-3 block"
                                                 onClick={() => setMenuOpen(false)}
                                             >
                                                 {link.label}
-                                            </a>
+                                            </Link>
                                         </motion.div>
                                     ))}
                                 </div>

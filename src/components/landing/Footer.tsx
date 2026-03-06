@@ -3,10 +3,10 @@
 import Link from "next/link";
 
 const QUICK_LINKS = [
-    { label: "Home", href: "#hero" },
-    { label: "Features", href: "#solution" },
-    { label: "How It Works", href: "#how-it-works" },
-    { label: "FAQ", href: "#faq" },
+    { label: "Home", href: "/" },
+    { label: "Features", href: "/features" },
+    { label: "How It Works", href: "/how-it-works" },
+    { label: "FAQ", href: "/faq" },
 ];
 
 const LEGAL_LINKS = [
@@ -44,12 +44,12 @@ export default function Footer() {
                         <ul className="flex flex-col gap-3">
                             {QUICK_LINKS.map((link) => (
                                 <li key={link.label}>
-                                    <a
+                                    <Link
                                         href={link.href}
                                         className="text-sm text-text-primary hover:text-[#666666] font-medium transition-colors"
                                     >
                                         {link.label}
-                                    </a>
+                                    </Link>
                                 </li>
                             ))}
                         </ul>
