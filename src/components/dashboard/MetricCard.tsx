@@ -35,16 +35,16 @@ export default function MetricCard({
     }
 
     return (
-        <div className="bg-bg-secondary border border-border-primary rounded-xl p-6 transition-all hover:border-border-hover">
-            <div className="flex items-start justify-between mb-4">
-                <h3 className="text-sm font-medium text-text-secondary">{title}</h3>
-                <div className="p-2 bg-bg-hover rounded-lg text-text-primary">
+        <div className="bg-bg-secondary border border-border-primary rounded-xl p-4 md:p-6 transition-all hover:border-border-hover">
+            <div className="flex items-start justify-between mb-3 md:mb-4">
+                <h3 className="text-xs md:text-sm font-medium text-text-secondary">{title}</h3>
+                <div className="p-1.5 md:p-2 bg-bg-hover rounded-lg text-text-primary">
                     {icon}
                 </div>
             </div>
 
-            <div className="flex items-baseline gap-2 mb-2">
-                <span className="text-3xl font-bold text-text-primary tracking-tight">{value}</span>
+            <div className="flex items-baseline gap-2 mb-1.5 md:mb-2">
+                <span className="text-2xl md:text-3xl font-bold text-text-primary tracking-tight">{value}</span>
             </div>
 
             <div className="flex items-center gap-1.5 text-xs text-text-muted">

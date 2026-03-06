@@ -73,7 +73,7 @@ export default function StudentTrendsPage() {
         <div className="flex flex-col gap-8 pb-10">
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
                 <div className="flex flex-col gap-2">
-                    <h1 className="text-3xl font-bold text-text-primary tracking-tight">Wellness Trends</h1>
+                    <h1 className="text-2xl md:text-3xl font-bold text-text-primary tracking-tight">Wellness Trends</h1>
                     <p className="text-text-secondary">Historical visualization of your stress levels, mood, and sleep patterns.</p>
                 </div>
                 <PeriodSelector selected={period} onChange={setPeriod} />

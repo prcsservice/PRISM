@@ -44,11 +44,11 @@ export default function HeroSection() {
                     transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
                     className="max-w-4xl flex flex-col items-center text-center gap-3"
                 >
-                    <h1 className="text-4xl sm:text-5xl md:text-[60px] lg:text-[76px] font-medium leading-tight tracking-tight flex flex-row items-center justify-center gap-2 md:gap-4 text-text-primary whitespace-nowrap">
+                    <h1 className="text-4xl sm:text-5xl md:text-[60px] lg:text-[76px] font-medium leading-tight tracking-tight flex flex-col sm:flex-row items-center justify-center gap-2 md:gap-4 text-text-primary">
                         <span>Detect Risk</span>
 
                         {/* Purple SVG Star inspired by reference */}
-                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#A1FF62" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-8 h-8 sm:w-10 sm:h-10 md:w-14 md:h-14 shrink-0 mx-1 md:mx-2">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#A1FF62" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-8 h-8 sm:w-10 sm:h-10 md:w-14 md:h-14 shrink-0 mx-1 md:mx-2 hidden sm:block">
                             <path d="M12 2v20M2 12h20M4.93 4.93l14.14 14.14M19.07 4.93L4.93 19.07" />
                         </svg>
 

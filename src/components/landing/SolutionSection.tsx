@@ -34,8 +34,8 @@ const FEATURES = [
 
 export default function SolutionSection() {
     return (
-        <section id="solution" className="bg-bg-primary py-28 md:py-36">
-            <div className="max-w-[1440px] mx-auto px-8 md:px-20">
+        <section id="solution" className="bg-bg-primary py-16 md:py-28 lg:py-36">
+            <div className="max-w-[1440px] mx-auto px-4 sm:px-8 md:px-20">
                 <motion.div
                     initial={{ opacity: 0, y: 30 }}
                     whileInView={{ opacity: 1, y: 0 }}
@@ -63,7 +63,7 @@ export default function SolutionSection() {
                                 whileInView={{ opacity: 1, y: 0 }}
                                 viewport={{ once: true }}
                                 transition={{ duration: 0.5, delay: i * 0.1 }}
-                                className={`bg-bg-primary border border-border-primary shadow-sm rounded-[10px] p-8 md:p-10 hover:border-(--accent) hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 flex flex-col gap-5 ${feature.span}`}
+                                className={`bg-bg-primary border border-border-primary shadow-sm rounded-[10px] p-8 md:p-10 hover:border-accent hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 flex flex-col gap-5 ${feature.span}`}
                             >
                                 <div className="w-14 h-14 border border-border-primary bg-bg-secondary rounded-[8px] flex items-center justify-center">
                                     <Icon size={24} className="text-text-primary" strokeWidth={1.5} />

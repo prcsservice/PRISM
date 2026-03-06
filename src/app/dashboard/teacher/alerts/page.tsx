@@ -75,7 +75,7 @@ export default function TeacherAlertsPage() {
     return (
         <div className="flex flex-col gap-8 pb-10 max-w-4xl">
             <div className="flex flex-col gap-2">
-                <h1 className="text-3xl font-bold text-text-primary tracking-tight">Active Alerts</h1>
+                <h1 className="text-2xl md:text-3xl font-bold text-text-primary tracking-tight">Active Alerts</h1>
                 <p className="text-text-secondary">AI-generated early warning flags requiring faculty review.</p>
             </div>
 

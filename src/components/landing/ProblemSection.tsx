@@ -39,8 +39,8 @@ function AnimatedCounter({ target }: { target: string }) {
 
 export default function ProblemSection() {
     return (
-        <section id="problem" className="bg-bg-primary py-28 md:py-36">
-            <div className="max-w-[1440px] mx-auto px-8 md:px-20 grid md:grid-cols-2 gap-20 items-center">
+        <section id="problem" className="bg-bg-primary py-16 md:py-28 lg:py-36">
+            <div className="max-w-[1440px] mx-auto px-4 sm:px-8 md:px-20 grid md:grid-cols-2 gap-12 md:gap-20 items-center">
                 {/* Left — Text */}
                 <motion.div
                     initial={{ opacity: 0, x: -40 }}
@@ -80,7 +80,7 @@ export default function ProblemSection() {
                             whileInView={{ opacity: 1, y: 0 }}
                             viewport={{ once: true }}
                             transition={{ duration: 0.5, delay: 0.3 + i * 0.1 }}
-                            className="bg-bg-primary border border-border-primary shadow-sm rounded-[10px] p-8 md:p-10 hover:border-(--accent) hover:-translate-y-0.5 transition-all duration-300"
+                            className="bg-bg-primary border border-border-primary shadow-sm rounded-[10px] p-8 md:p-10 hover:border-accent hover:-translate-y-0.5 transition-all duration-300"
                         >
                             <AnimatedCounter target={stat.value} />
                             <p className="text-sm md:text-base text-[#666666] mt-4 leading-snug">

@@ -104,7 +104,7 @@ export default function StudentDashboard() {
         <div className="flex flex-col gap-8 pb-10">
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold text-text-primary tracking-tight mb-1">
+                    <h1 className="text-2xl md:text-3xl font-bold text-text-primary tracking-tight mb-1">
                         {greeting}, {profile?.name?.split(" ")[0] || "Student"}
                     </h1>
                     <p className="text-text-secondary">
@@ -160,7 +160,7 @@ export default function StudentDashboard() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Left Column */}
                 <div className="lg:col-span-2 flex flex-col gap-6">
-                    <div className="bg-bg-secondary border border-border-primary rounded-xl p-6">
+                    <div className="bg-bg-secondary border border-border-primary rounded-xl p-4 md:p-6">
                         <h3 className="font-semibold text-text-primary mb-4">Stress Trend (30 Days)</h3>
                         {stressTrendData.length > 1 ? (
                             <LineChart data={stressTrendData} xKey="date" yKey="stress" height={260} />
@@ -169,7 +169,7 @@ export default function StudentDashboard() {
                         )}
                     </div>
 
-                    <div className="bg-bg-secondary border border-border-primary rounded-xl p-6">
+                    <div className="bg-bg-secondary border border-border-primary rounded-xl p-4 md:p-6">
                         <div className="flex items-center justify-between mb-4">
                             <h3 className="font-semibold text-text-primary">Recent Logs</h3>
                             <Link href="/dashboard/student/history" className="text-xs text-accent hover:underline">View all &rarr;</Link>
@@ -208,7 +208,7 @@ export default function StudentDashboard() {
                 {/* Right Column */}
                 <div className="flex flex-col gap-6">
                     {/* AI Insights */}
-                    <div className="bg-bg-secondary border border-accent/30 rounded-xl relative overflow-hidden flex flex-col p-6">
+                    <div className="bg-bg-secondary border border-accent/30 rounded-xl relative overflow-hidden flex flex-col p-4 md:p-6">
                         <div className="absolute inset-0 bg-accent opacity-[0.02]" />
                         <div className="flex items-center justify-between mb-4 relative z-10">
                             <h3 className="font-semibold text-text-primary">AI Insights</h3>
@@ -238,7 +238,7 @@ export default function StudentDashboard() {
                     </div>
 
                     {/* Academic Overview */}
-                    <div className="bg-bg-secondary border border-border-primary rounded-xl p-6">
+                    <div className="bg-bg-secondary border border-border-primary rounded-xl p-4 md:p-6">
                         <h3 className="font-semibold text-text-primary mb-4">Academic Overview</h3>
                         {academic ? (
                             <div className="space-y-3">
@@ -272,7 +272,7 @@ export default function StudentDashboard() {
                     </div>
 
                     {/* Mentor Actions */}
-                    <div className="bg-bg-secondary border border-border-primary rounded-xl p-6">
+                    <div className="bg-bg-secondary border border-border-primary rounded-xl p-4 md:p-6">
                         <div className="flex items-center gap-2 mb-4">
                             <MessageSquare size={16} className="text-[#A3E635]" />
                             <h3 className="font-semibold text-text-primary">Mentor Actions</h3>

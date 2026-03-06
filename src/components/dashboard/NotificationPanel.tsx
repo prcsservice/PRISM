@@ -84,7 +84,7 @@ export default function NotificationPanel() {
 
             {/* Dropdown Panel */}
             {isOpen && (
-                <div className="absolute right-0 top-12 w-96 max-h-[480px] bg-bg-secondary border border-border-primary rounded-xl shadow-2xl z-50 flex flex-col overflow-hidden">
+                <div className="absolute right-0 md:right-0 top-12 w-[calc(100vw-1.5rem)] md:w-96 max-h-[480px] bg-bg-secondary border border-border-primary rounded-xl shadow-2xl z-50 flex flex-col overflow-hidden" style={{ right: '-0.5rem' }}>
                     {/* Header */}
                     <div className="flex items-center justify-between px-4 py-3 border-b border-border-primary">
                         <h3 className="text-sm font-semibold text-text-primary">Notifications</h3>

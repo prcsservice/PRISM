@@ -45,6 +45,37 @@ const gemini_1 = require("./gemini");
 const notifications_1 = require("./notifications");
 const email_1 = require("./email");
 admin.initializeApp();
+/**
+ * Compute CIA average from academic data.
+ * Supports both new subject-wise format and legacy flat ciaMarks array.
+ */
+function computeCiaAverageFromAcademic(academic) {
+    var _a;
+    // New format: semesters[].subjects[] with cia1/cia2/cia3
+    if (academic.semesters && academic.currentSemester) {
+        const currentSem = academic.semesters.find((s) => s.semester === academic.currentSemester);
+        if (currentSem && ((_a = currentSem.subjects) === null || _a === void 0 ? void 0 : _a.length) > 0) {
+            const marks = [];
+            for (const sub of currentSem.subjects) {
+                if (sub.cia1 != null)
+                    marks.push(sub.cia1);
+                if (sub.cia2 != null)
+                    marks.push(sub.cia2);
+                if (sub.cia3 != null)
+                    marks.push(sub.cia3);
+            }
+            if (marks.length > 0) {
+                return marks.reduce((a, b) => a + b, 0) / marks.length;
+            }
+        }
+    }
+    // Legacy format: flat ciaMarks array
+    const ciaMarks = academic.ciaMarks;
+    if (ciaMarks && Array.isArray(ciaMarks) && ciaMarks.length > 0) {
+        return ciaMarks.reduce((a, b) => a + b, 0) / ciaMarks.length;
+    }
+    return 50; // default when no data
+}
 // ===== Data Deletion Functions =====
 /**
  * Scheduled function: Runs daily at 2 AM UTC.
@@ -161,13 +192,14 @@ exports.onDailyLogCreated = (0, firestore_1.onDocumentCreated)("students/{studen
         // 1. Fetch academic data (may not exist yet)
         const academicSnap = await db.doc(`students/${studentId}/academic/data`).get();
         const academic = academicSnap.exists ? academicSnap.data() : {
+            currentSemester: 1,
+            semesters: [],
             ciaMarks: [50],
             attendancePercentage: 75,
             facultyFeedbackScore: 3,
         };
-        // 2. Compute CIA average
-        const ciaMarks = academic.ciaMarks || [50];
-        const ciaAverage = ciaMarks.reduce((a, b) => a + b, 0) / ciaMarks.length;
+        // 2. Compute CIA average (supports new subject-wise and legacy flat format)
+        const ciaAverage = computeCiaAverageFromAcademic(academic);
         // 3. Normalize features
         const features = (0, normalization_1.normalizeAll)({
             sleepHours: (_a = logData.sleepHours) !== null && _a !== void 0 ? _a : 7,
@@ -340,12 +372,13 @@ exports.onAcademicDataUpdated = (0, firestore_1.onDocumentWritten)("students/{st
         }
         const latestLog = logsSnap.docs[0].data();
         const academic = afterData !== null && afterData !== void 0 ? afterData : {
+            currentSemester: 1,
+            semesters: [],
             ciaMarks: [50],
             attendancePercentage: 75,
             facultyFeedbackScore: 3,
         };
-        const ciaMarks = academic.ciaMarks || [50];
-        const ciaAverage = ciaMarks.reduce((a, b) => a + b, 0) / ciaMarks.length;
+        const ciaAverage = computeCiaAverageFromAcademic(academic);
         const features = (0, normalization_1.normalizeAll)({
             sleepHours: (_c = latestLog.sleepHours) !== null && _c !== void 0 ? _c : 7,
             screenTimeHours: (_d = latestLog.screenTimeHours) !== null && _d !== void 0 ? _d : 3,

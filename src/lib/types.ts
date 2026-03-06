@@ -27,11 +27,29 @@ export interface StudentProfile {
     updatedAt: Timestamp;
 }
 
+export interface SubjectMark {
+    subjectName: string;
+    subjectCode: string;
+    cia1?: number;
+    cia2?: number;
+    cia3?: number;
+}
+
+export interface SemesterRecord {
+    semester: number;
+    year: string;              // e.g. "2025-26"
+    subjects: SubjectMark[];
+    sgpa?: number;             // previous semester result
+}
+
 export interface StudentAcademic {
-    ciaMarks: number[];
+    currentSemester: number;
+    semesters: SemesterRecord[];
     attendancePercentage: number;
     facultyFeedbackScore: number;
     updatedAt: Timestamp;
+    // Legacy support — old flat array
+    ciaMarks?: number[];
 }
 
 export type Mood = 1 | 2 | 3 | 4 | 5;

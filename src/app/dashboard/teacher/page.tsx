@@ -77,8 +77,8 @@ export default function TeacherDashboard() {
     return (
         <div className="flex flex-col gap-8 pb-10">
             <div className="flex flex-col gap-2">
-                <div className="flex items-center gap-3">
-                    <h1 className="text-3xl font-bold text-text-primary tracking-tight">
+                <div className="flex flex-wrap items-center gap-3">
+                    <h1 className="text-2xl md:text-3xl font-bold text-text-primary tracking-tight">
                         {greeting}, {profile?.name.split(" ")[0]}
                     </h1>
                     <span className="px-2.5 py-1 text-xs font-semibold bg-[#A3E635]/10 text-[#A3E635] border border-[#A3E635]/20 rounded">

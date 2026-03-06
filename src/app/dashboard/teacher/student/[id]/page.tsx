@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useParams } from "next/navigation";
 import { motion } from "framer-motion";
 import StudentHeader from "@/components/dashboard/StudentHeader";
@@ -13,7 +13,8 @@ import {
     getLatestPrediction, getPredictionHistory, getDailyLogs,
     getInterventions, addIntervention, updateAcademicData
 } from "@/lib/firestore";
-import type { StudentProfile, StudentAcademic, StudentMetrics, Prediction, DailyLog, Intervention } from "@/lib/types";
+import { getSubjectsForSemester } from "@/lib/subjects";
+import type { StudentProfile, StudentAcademic, StudentMetrics, Prediction, Intervention, SubjectMark, SemesterRecord } from "@/lib/types";
 
 export default function StudentDetailPage() {
     const params = useParams();
@@ -29,9 +30,10 @@ export default function StudentDetailPage() {
     const [loading, setLoading] = useState(true);
 
     // Academic edit state
-    const [editCia, setEditCia] = useState("");
     const [editAttendance, setEditAttendance] = useState("");
     const [editFeedback, setEditFeedback] = useState("");
+    const [activeSemester, setActiveSemester] = useState(1);
+    const [semesterData, setSemesterData] = useState<Record<number, { subjects: SubjectMark[]; sgpa: string }>>({});
     const [saving, setSaving] = useState(false);
 
     useEffect(() => {
@@ -57,7 +59,6 @@ export default function StudentDetailPage() {
             setPrediction(pred);
             setInterventions(notes);
 
-            // Build stress history from predictions
             const history = preds.map((pr) => ({
                 date: pr.timestamp?.toDate?.().toLocaleDateString("en-US", { month: "short", day: "numeric" }) ?? "",
                 stress: Math.round((pr.predictionData?.stressLevel ?? 0) * 100),
@@ -65,9 +66,40 @@ export default function StudentDetailPage() {
             setStressHistory(history);
 
             if (a) {
-                setEditCia(a.ciaMarks?.join(", ") ?? "");
                 setEditAttendance(String(a.attendancePercentage ?? ""));
                 setEditFeedback(String(a.facultyFeedbackScore ?? ""));
+
+                // Initialize semester data from saved data
+                const semData: Record<number, { subjects: SubjectMark[]; sgpa: string }> = {};
+                const currentSem = a.currentSemester || (p?.year ? p.year * 2 : 1);
+
+                if (a.semesters && a.semesters.length > 0) {
+                    for (const sem of a.semesters) {
+                        semData[sem.semester] = {
+                            subjects: sem.subjects,
+                            sgpa: sem.sgpa != null ? String(sem.sgpa) : "",
+                        };
+                    }
+                }
+
+                // For any semester without saved data, init from template
+                if (p) {
+                    for (let s = 1; s <= currentSem; s++) {
+                        if (!semData[s]) {
+                            const templates = getSubjectsForSemester(p.department, s);
+                            semData[s] = {
+                                subjects: templates.map(t => ({
+                                    subjectName: t.name,
+                                    subjectCode: t.code,
+                                })),
+                                sgpa: "",
+                            };
+                        }
+                    }
+                }
+
+                setSemesterData(semData);
+                setActiveSemester(currentSem);
             }
         } catch (err) {
             console.error("Error loading student data:", err);
@@ -75,12 +107,53 @@ export default function StudentDetailPage() {
         setLoading(false);
     };
 
+    // Determine current semester from profile year
+    const currentSemester = useMemo(() => {
+        if (academic?.currentSemester) return academic.currentSemester;
+        if (profile?.year) return profile.year * 2; // rough estimate
+        return 1;
+    }, [academic, profile]);
+
+    const semesterTabs = useMemo(() => {
+        const tabs: number[] = [];
+        for (let i = 1; i <= currentSemester; i++) tabs.push(i);
+        return tabs;
+    }, [currentSemester]);
+
+    const updateSubjectMark = (semester: number, subjectIndex: number, field: "cia1" | "cia2" | "cia3", value: string) => {
+        setSemesterData(prev => {
+            const copy = { ...prev };
+            if (!copy[semester]) return copy;
+            const subjects = [...copy[semester].subjects];
+            subjects[subjectIndex] = {
+                ...subjects[subjectIndex],
+                [field]: value === "" ? undefined : Number(value),
+            };
+            copy[semester] = { ...copy[semester], subjects };
+            return copy;
+        });
+    };
+
+    const updateSgpa = (semester: number, value: string) => {
+        setSemesterData(prev => ({
+            ...prev,
+            [semester]: { ...prev[semester], sgpa: value },
+        }));
+    };
+
     const handleSaveAcademic = async () => {
         setSaving(true);
         try {
-            const ciaMarks = editCia.split(",").map((s) => Number(s.trim())).filter((n) => !isNaN(n));
+            const semesters: SemesterRecord[] = Object.entries(semesterData).map(([sem, data]) => ({
+                semester: Number(sem),
+                year: "",
+                subjects: data.subjects,
+                sgpa: data.sgpa ? Number(data.sgpa) : undefined,
+            }));
+
             await updateAcademicData(studentId, {
-                ciaMarks,
+                currentSemester,
+                semesters,
                 attendancePercentage: Number(editAttendance),
                 facultyFeedbackScore: Number(editFeedback),
             });
@@ -116,6 +189,8 @@ export default function StudentDetailPage() {
     if (!profile) {
         return <EmptyState title="Student not found" description="This student profile could not be loaded." />;
     }
+
+    const activeSemData = semesterData[activeSemester];
 
     return (
         <div className="space-y-6">
@@ -160,38 +235,104 @@ export default function StudentDetailPage() {
                         Academic Data
                     </h3>
                     <div className="space-y-4">
-                        <div>
-                            <label className="text-xs text-text-muted">CIA Marks (comma separated)</label>
-                            <input
-                                type="text"
-                                value={editCia}
-                                onChange={(e) => setEditCia(e.target.value)}
-                                className="w-full mt-1 bg-bg-secondary border border-border-primary rounded-lg p-2.5 text-sm text-text-primary focus:outline-none focus:border-accent"
-                                placeholder="85, 78, 92"
-                            />
+                        {/* Semester Tabs */}
+                        <div className="flex gap-1 overflow-x-auto pb-1">
+                            {semesterTabs.map(sem => (
+                                <button
+                                    key={sem}
+                                    onClick={() => setActiveSemester(sem)}
+                                    className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all whitespace-nowrap ${activeSemester === sem
+                                            ? "bg-accent text-black"
+                                            : "bg-bg-secondary text-text-secondary hover:bg-bg-hover"
+                                        }`}
+                                >
+                                    Sem {sem}
+                                    {sem === currentSemester && (
+                                        <span className="ml-1 text-[10px] opacity-70">(Current)</span>
+                                    )}
+                                </button>
+                            ))}
                         </div>
-                        <div>
-                            <label className="text-xs text-text-muted">Attendance %</label>
-                            <input
-                                type="number"
-                                value={editAttendance}
-                                onChange={(e) => setEditAttendance(e.target.value)}
-                                className="w-full mt-1 bg-bg-secondary border border-border-primary rounded-lg p-2.5 text-sm text-text-primary focus:outline-none focus:border-accent"
-                                placeholder="85"
-                            />
+
+                        {/* Subject-wise CIA marks */}
+                        {activeSemData && activeSemData.subjects.length > 0 ? (
+                            <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
+                                {activeSemData.subjects.map((sub, i) => (
+                                    <div key={i} className="bg-bg-secondary border border-border-primary rounded-lg p-3">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <div>
+                                                <span className="text-xs font-medium text-text-primary">{sub.subjectName}</span>
+                                                <span className="text-[10px] text-text-muted ml-2">{sub.subjectCode}</span>
+                                            </div>
+                                        </div>
+                                        <div className="grid grid-cols-3 gap-2">
+                                            {(["cia1", "cia2", "cia3"] as const).map((field, fi) => (
+                                                <div key={field}>
+                                                    <label className="text-[10px] text-text-muted block mb-0.5">CIA {fi + 1}</label>
+                                                    <input
+                                                        type="number"
+                                                        min={0}
+                                                        max={100}
+                                                        value={sub[field] ?? ""}
+                                                        onChange={(e) => updateSubjectMark(activeSemester, i, field, e.target.value)}
+                                                        placeholder="—"
+                                                        className="w-full bg-bg-primary border border-border-primary rounded-md px-2 py-1.5 text-sm text-text-primary text-center font-mono focus:outline-none focus:border-accent"
+                                                    />
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                ))}
+
+                                {/* SGPA for previous semesters */}
+                                {activeSemester < currentSemester && (
+                                    <div className="bg-bg-secondary border border-border-primary rounded-lg p-3">
+                                        <label className="text-xs text-text-muted block mb-1">Semester SGPA</label>
+                                        <input
+                                            type="number"
+                                            min={0}
+                                            max={10}
+                                            step={0.01}
+                                            value={activeSemData.sgpa}
+                                            onChange={(e) => updateSgpa(activeSemester, e.target.value)}
+                                            placeholder="e.g. 8.5"
+                                            className="w-full bg-bg-primary border border-border-primary rounded-md px-2 py-1.5 text-sm text-text-primary font-mono focus:outline-none focus:border-accent"
+                                        />
+                                    </div>
+                                )}
+                            </div>
+                        ) : (
+                            <p className="text-sm text-text-muted py-2">No subjects defined for this semester.</p>
+                        )}
+
+                        {/* Attendance & Feedback */}
+                        <div className="grid grid-cols-2 gap-3 pt-2 border-t border-border-primary">
+                            <div>
+                                <label className="text-xs text-text-muted">Attendance %</label>
+                                <input
+                                    type="number"
+                                    min={0}
+                                    max={100}
+                                    value={editAttendance}
+                                    onChange={(e) => setEditAttendance(e.target.value)}
+                                    className="w-full mt-1 bg-bg-secondary border border-border-primary rounded-lg p-2.5 text-sm text-text-primary focus:outline-none focus:border-accent"
+                                    placeholder="85"
+                                />
+                            </div>
+                            <div>
+                                <label className="text-xs text-text-muted">Faculty Feedback (1-5)</label>
+                                <input
+                                    type="number"
+                                    min={1}
+                                    max={5}
+                                    value={editFeedback}
+                                    onChange={(e) => setEditFeedback(e.target.value)}
+                                    className="w-full mt-1 bg-bg-secondary border border-border-primary rounded-lg p-2.5 text-sm text-text-primary focus:outline-none focus:border-accent"
+                                    placeholder="4"
+                                />
+                            </div>
                         </div>
-                        <div>
-                            <label className="text-xs text-text-muted">Faculty Feedback (1-5)</label>
-                            <input
-                                type="number"
-                                min={1}
-                                max={5}
-                                value={editFeedback}
-                                onChange={(e) => setEditFeedback(e.target.value)}
-                                className="w-full mt-1 bg-bg-secondary border border-border-primary rounded-lg p-2.5 text-sm text-text-primary focus:outline-none focus:border-accent"
-                                placeholder="4"
-                            />
-                        </div>
+
                         <button
                             onClick={handleSaveAcademic}
                             disabled={saving}

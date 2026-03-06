@@ -17,8 +17,8 @@ const LEGAL_LINKS = [
 
 export default function Footer() {
     return (
-        <footer className="bg-bg-secondary border-t border-border-primary pt-16 md:pt-20">
-            <div className="max-w-[1440px] mx-auto px-8 md:px-20 pb-16 md:pb-20">
+        <footer className="bg-bg-secondary border-t border-border-primary pt-12 md:pt-16 lg:pt-20">
+            <div className="max-w-[1440px] mx-auto px-4 sm:px-8 md:px-20 pb-12 md:pb-16 lg:pb-20">
                 <div className="grid sm:grid-cols-2 md:grid-cols-4 gap-12 md:gap-10">
                     {/* Logo & Tagline */}
                     <div className="flex flex-col gap-5">

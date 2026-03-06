@@ -5,6 +5,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import Sidebar from "@/components/dashboard/Sidebar";
 import TopNavbar from "@/components/dashboard/TopNavbar";
+import BottomNavbar from "@/components/dashboard/BottomNavbar";
 import ErrorBoundary from "@/components/ui/ErrorBoundary";
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
@@ -55,7 +56,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             <Sidebar />
             <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
                 <TopNavbar />
-                <main className="flex-1 overflow-y-auto p-4 md:p-8 bg-bg-secondary">
+                <main className="flex-1 overflow-y-auto p-4 md:p-8 pb-24 md:pb-8 bg-bg-secondary">
                     <div className="max-w-[1200px] mx-auto w-full">
                         <ErrorBoundary>
                             {children}
@@ -63,6 +64,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                     </div>
                 </main>
             </div>
+            <BottomNavbar />
         </div>
     );
 }

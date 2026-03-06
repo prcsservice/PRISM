@@ -70,7 +70,7 @@ export default function TeacherAnalyticsPage() {
         <div className="flex flex-col gap-8 pb-10">
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
                 <div className="flex flex-col gap-2">
-                    <h1 className="text-3xl font-bold text-text-primary tracking-tight">Department Analytics</h1>
+                    <h1 className="text-2xl md:text-3xl font-bold text-text-primary tracking-tight">Department Analytics</h1>
                     <p className="text-text-secondary">Aggregate insights and risk distribution for {profile?.department || "your department"}.</p>
                 </div>
 

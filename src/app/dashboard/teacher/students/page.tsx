@@ -32,12 +32,18 @@ export default function TeacherStudentsPage() {
         { header: "Section", accessorKey: "section" as any },
         {
             header: "Risk Level",
-            accessorKey: "latestPrediction" as any,
-            cell: (item: any) => (
-                <RiskBadge variant={item.latestPrediction?.riskLevel || "default"} className="capitalize w-20">
-                    {item.latestPrediction?.riskLevel || "None"}
-                </RiskBadge>
-            )
+            accessorKey: "metrics" as any,
+            cell: (item: any) => {
+                const riskLevel = item.metrics?.riskLevel;
+                const variant = riskLevel
+                    ? (riskLevel.toLowerCase() === "moderate" ? "medium" : riskLevel.toLowerCase())
+                    : "default";
+                return (
+                    <RiskBadge variant={variant as any} className="capitalize w-20">
+                        {riskLevel || "N/A"}
+                    </RiskBadge>
+                );
+            }
         }
     ];
 
@@ -45,7 +51,7 @@ export default function TeacherStudentsPage() {
         <div className="flex flex-col gap-8 pb-10">
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
                 <div className="flex flex-col gap-2">
-                    <h1 className="text-3xl font-bold text-text-primary tracking-tight">Student Roster</h1>
+                    <h1 className="text-2xl md:text-3xl font-bold text-text-primary tracking-tight">Student Roster</h1>
                     <p className="text-text-secondary">All actively monitored students in {profile?.department || "your department"}.</p>
                 </div>
 

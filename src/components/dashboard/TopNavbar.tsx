@@ -3,23 +3,29 @@
 import { useTheme } from "@/context/ThemeContext";
 import { useAuth } from "@/hooks/useAuth";
 import { signOut } from "@/lib/auth";
-import { Search, Sun, Moon, LogOut, Menu } from "lucide-react";
+import { Search, Sun, Moon, LogOut } from "lucide-react";
 import NotificationPanel from "@/components/dashboard/NotificationPanel";
+import Link from "next/link";
 
 export default function TopNavbar() {
     const { theme, toggleTheme } = useTheme();
     const { userData, role } = useAuth();
 
+    const accentHsl = role === "teacher" ? "#A3E635" : "var(--accent)";
+
     return (
-        <header className="h-16 border-b border-border-primary bg-bg-primary/80 backdrop-blur-md sticky top-0 z-40 px-4 md:px-8 flex items-center justify-between">
-            {/* Mobile Menu Button - Left */}
+        <header className="h-14 md:h-16 border-b border-border-primary bg-bg-primary/80 backdrop-blur-md sticky top-0 z-40 px-3 md:px-8 flex items-center justify-between">
+            {/* Mobile: PRISM Logo — Left */}
             <div className="flex items-center md:hidden">
-                <button className="p-2 text-text-secondary hover:text-text-primary transition-colors">
-                    <Menu size={20} />
-                </button>
+                <Link href="/" className="flex items-center gap-1.5">
+                    <div className="w-6 h-6 border-2 rotate-45 flex items-center justify-center" style={{ borderColor: accentHsl }}>
+                        <div className="w-1.5 h-1.5 rotate-0" style={{ backgroundColor: accentHsl }} />
+                    </div>
+                    <span className="text-base font-extrabold text-text-primary tracking-tight">PRISM</span>
+                </Link>
             </div>
 
-            {/* Centered context indicator (optional) */}
+            {/* Desktop: Context indicator — Left */}
             <div className="hidden md:flex items-center">
                 <span className="text-sm font-medium text-text-secondary label-uppercase tracking-wider">
                     {role === "student" ? "Welcome Back" : "Faculty Command Center"}

@@ -8,8 +8,8 @@ const STEP_ICONS = [Database, Brain, Shield, BellRing];
 
 export default function HowItWorksSection() {
     return (
-        <section id="how-it-works" className="bg-bg-primary py-24 md:py-32">
-            <div className="w-full max-w-[1440px] mx-auto px-6 md:px-12">
+        <section id="how-it-works" className="bg-bg-primary py-16 md:py-24 lg:py-32">
+            <div className="w-full max-w-[1440px] mx-auto px-4 sm:px-6 md:px-12">
 
                 {/* Header section inspired by Growwwkit reference */}
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-10 mb-20">

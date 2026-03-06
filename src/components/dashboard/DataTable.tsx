@@ -37,12 +37,12 @@ export default function DataTable<T>({
                 <thead className="text-xs uppercase bg-bg-hover text-text-muted">
                     <tr>
                         {columns.map((col, i) => (
-                            <th key={i} scope="col" className="px-6 py-4 font-semibold">
+                            <th key={i} scope="col" className="px-3 py-3 md:px-6 md:py-4 font-semibold">
                                 {col.header}
                             </th>
                         ))}
                         {(onRowClick || rowHref) && (
-                            <th scope="col" className="px-6 py-4">
+                            <th scope="col" className="px-3 py-3 md:px-6 md:py-4">
                                 <span className="sr-only">Actions</span>
                             </th>
                         )}
@@ -59,13 +59,13 @@ export default function DataTable<T>({
                                 onClick={() => onRowClick && onRowClick(item)}
                             >
                                 {columns.map((col, colIndex) => (
-                                    <td key={colIndex} className="px-6 py-4 whitespace-nowrap">
+                                    <td key={colIndex} className="px-3 py-3 md:px-6 md:py-4 whitespace-nowrap">
                                         {col.cell ? col.cell(item) : String(item[col.accessorKey])}
                                     </td>
                                 ))}
 
                                 {isClickable && (
-                                    <td className="px-6 py-4 whitespace-nowrap text-right">
+                                    <td className="px-3 py-3 md:px-6 md:py-4 whitespace-nowrap text-right">
                                         <div className="text-text-secondary group-hover:text-text-primary transition-colors flex justify-end">
                                             <ChevronRight size={18} />
                                         </div>
@@ -81,11 +81,11 @@ export default function DataTable<T>({
                                         <Link href={rowHref(item)} className="flex w-full items-center">
                                             <div className="flex w-full items-center">
                                                 {columns.map((col, colIndex) => (
-                                                    <div key={colIndex} className="px-6 py-4 whitespace-nowrap flex-1">
+                                                    <div key={colIndex} className="px-3 py-3 md:px-6 md:py-4 whitespace-nowrap flex-1">
                                                         {col.cell ? col.cell(item) : String(item[col.accessorKey])}
                                                     </div>
                                                 ))}
-                                                <div className="px-6 py-4 whitespace-nowrap text-right text-text-secondary group-hover:text-text-primary transition-colors">
+                                                <div className="px-3 py-3 md:px-6 md:py-4 whitespace-nowrap text-right text-text-secondary group-hover:text-text-primary transition-colors">
                                                     <ChevronRight size={18} />
                                                 </div>
                                             </div>

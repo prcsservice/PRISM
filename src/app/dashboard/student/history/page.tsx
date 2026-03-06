@@ -28,7 +28,7 @@ export default function StudentHistoryPage() {
     return (
         <div className="flex flex-col gap-8 pb-10">
             <div className="flex flex-col gap-2">
-                <h1 className="text-3xl font-bold text-text-primary tracking-tight">History Log</h1>
+                <h1 className="text-2xl md:text-3xl font-bold text-text-primary tracking-tight">History Log</h1>
                 <p className="text-text-secondary">List of all your previously submitted daily wellness logs.</p>
             </div>
 

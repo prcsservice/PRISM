@@ -7,11 +7,11 @@ import Link from "next/link";
 
 export default function CTASection() {
     return (
-        <section className="relative bg-[#A3E635] py-28 md:py-36 overflow-hidden">
+        <section className="relative bg-[#A3E635] py-16 md:py-28 lg:py-36 overflow-hidden">
             <div className="absolute inset-0 bg-[url('/grid.svg')] bg-size-[40px_40px] opacity-[0.05]" />
             <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-bg-primary/20 blur-[100px] rounded-full pointer-events-none" />
 
-            <div className="relative z-10 max-w-[1440px] mx-auto px-8 md:px-20 text-center">
+            <div className="relative z-10 max-w-[1440px] mx-auto px-4 sm:px-8 md:px-20 text-center">
                 <motion.div
                     initial={{ opacity: 0, y: 30 }}
                     whileInView={{ opacity: 1, y: 0 }}
@@ -19,7 +19,7 @@ export default function CTASection() {
                     transition={{ duration: 0.7 }}
                     className="flex flex-col items-center gap-8"
                 >
-                    <h2 className="text-5xl md:text-6xl lg:text-7xl font-semibold text-text-primary tracking-[-0.04em]">
+                    <h2 className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-semibold text-text-primary tracking-[-0.04em]">
                         Ready to Protect
                         <br />
                         Your Students?
